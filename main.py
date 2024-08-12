@@ -5,6 +5,7 @@ Image.CUBIC = Image.BICUBIC
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.scrolled import ScrolledFrame
+from ttkbootstrap.toast import ToastNotification
 import tkinter as tk
 import serial
 import serial.tools.list_ports
@@ -20,6 +21,8 @@ PATH = Path(__file__).parent / 'assets'
 
 class Main(ttk.Frame):
     def __init__(self, master, **kwargs):
+        pygame.mixer.init()
+
         super().__init__(master, **kwargs)
         self.pack(expand=True, fill=BOTH)
 
@@ -50,6 +53,8 @@ class Main(ttk.Frame):
 
         self.com_port = tk.StringVar()
         self.part = tk.StringVar()
+
+        self.flag_tare = tk.BooleanVar(value=False)
 
         self.weight = tk.DoubleVar(value=0.00)
         self.scale = tk.StringVar()
@@ -161,15 +166,33 @@ class Main(ttk.Frame):
         self.create_popup(self.select_com_combobox, "com", self.select_com_options, self.com_port)
         self.create_popup(self.select_part_combobox, "part", select_part_options, self.part)
 
-        status_labelframe = ttk.Labelframe(content_frame, text='STATUS')
-        status_labelframe.grid(row=0, column=2, columnspan=2, sticky=NSEW, padx=5, pady=5)
+        status_label_frame = ttk.Labelframe(content_frame, text='STATUS')
+        status_label_frame.grid(row=0, column=2, rowspan=2, columnspan=2, sticky=NSEW, padx=5, pady=5)
 
         self.weight_label = ttk.Label(content_frame, textvariable=self.scale, justify=RIGHT, anchor=E, font=('Arial', 96))
         # self.weight_label = ttk.Label(content_frame, text='', justify=RIGHT, anchor=E, font=('Arial', 96))
         self.weight_label.grid(row=3, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
 
-        self.status_label = ttk.Label(content_frame, justify=RIGHT, anchor=E, font=('Arial', 56))
-        self.status_label.grid(row=4, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
+        self.check_label = ttk.Label(content_frame, justify=RIGHT, anchor=E, font=('Arial', 56))
+        self.check_label.grid(row=4, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
+
+        self.reload_button = ttk.Button(
+            master=content_frame,
+            text='RELOAD',
+            bootstyle=INFO,
+            state=DISABLED
+            # command=self.toggle_connect
+        )
+        self.reload_button.grid(row=2, column=2, sticky=NSEW, ipady=10, padx=5, pady=5)
+
+        self.tare_button = ttk.Button(
+            master=content_frame,
+            text='TARE',
+            bootstyle=INFO,
+            state=DISABLED,
+            command=self.handleTare
+        )
+        self.tare_button.grid(row=2, column=3, sticky=NSEW, ipady=10, padx=5, pady=5)
 
         self.update_com_ports()
 
@@ -350,6 +373,19 @@ class Main(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
+    def tare(self):
+        if self.serial_connection and self.serial_connection.is_open:
+            request = {
+                "cmd": 7
+            }
+            if self.send_request(request):
+                str_response = self.read_response()
+                if str_response:
+                    return self.parse_json(str_response)
+        else:
+            print("Serial connection is not open.")
+        return None
+
     def get_weight(self, std, unit):
         if self.serial_connection and self.serial_connection.is_open:
             request = {
@@ -375,22 +411,33 @@ class Main(ttk.Frame):
 
             if self.connect_to_com_port():
                 self.connect_button.config(text="DISCONNECT", bootstyle="DANGER")
-                self.select_com_combobox.config(state="disabled")
-                self.select_part_combobox.config(state="readonly")
+                self.select_com_combobox.config(state=DISABLED)
+                self.select_part_combobox.config(state=READONLY)
+                self.reload_button.config(state=NORMAL)
+                self.tare_button.config(state=NORMAL)
                 self.update_scale()
         else:
             if self.disconnect_from_com_port():
                 self.connect_button.config(text="CONNECT", bootstyle="INFO")
-                self.select_com_combobox.config(state="readonly")
-                self.select_part_combobox.config(state="disabled")
+                self.select_com_combobox.config(state=READONLY)
+                self.select_part_combobox.config(state=DISABLED)
+                self.reload_button.config(state=DISABLED)
+                self.tare_button.config(state=DISABLED)
+
+                self.last_check.set(0)
                 self.scale.set("")
+                self.check_label.config(text="")
+
+                self.part.set("")
+                self.select_part_combobox.config(text="SELECT PART")
+
 
     def connect_to_com_port(self):
         try:
             self.serial_connection = serial.Serial(self.com_port.get(), 115200, timeout=1)
             return True
         except Exception as e:
-            print(f"Failed to connect to {self.com_port.get()}: {e}")
+            self.notificatiion("OPEN PORT", f"Failed to connect to {self.com_port.get()}: {e}", False)
             return False
 
     def disconnect_from_com_port(self):
@@ -399,35 +446,64 @@ class Main(ttk.Frame):
             return True
         return False
 
-    def update_scale(self):
-        if self.connect_button.cget("text") == "DISCONNECT":
-            if self.part.get() != "":
-                part = ast.literal_eval(self.part.get())
+    def notificatiion(self, title, message, status):
+        toast = ToastNotification(
+            title=title,
+            message=message,
+            duration=1500,
+            bootstyle=SUCCESS if status else DANGER,
+            position=(self.winfo_rootx() + self.winfo_width() - 230, self.winfo_rooty(), NW)
+        )
+        toast.show_toast()
+
+    def handleTare(self):
+        self.flag_tare.set(True)
+
+        try:
+            response = self.tare()
+            if response['status'] == 200:
+                self.flag_tare.set(False)
+                self.notificatiion("Tare Status", response['message'], True)
                 
-                response = self.get_weight(part["std"], part["unit"])
-                if response['status'] == 200:
-                    weight = response['data']['weight']
-                    check = response['data']['check']
+            else:
+                self.flag_tare.set(False)
+                self.notificatiion("Tare Status", response['message'], False)
+        except Exception as e:
+            self.flag_tare.set(False)
+            self.notificatiion("Tare Status", f"An error occurred: {e}", False)
 
-                    if part['unit'] == 'kg':
-                        scale = f"{float(format(weight, '.2f'))} {part['unit']}"
-                    else:
-                        scale = f"{int(weight)} {part['unit']}"
-
-                    if check == 1 and check != self.last_check.get():
-                        # self.play_tone("OK")
-                        self.status_label.config(foreground='green')
-                        self.status_label.config(text="QTY GOOD")
-                    elif check == 2 and check != self.last_check.get():
-                        # self.play_tone("NG")
-                        self.status_label.config(foreground='red')
-                        self.status_label.config(text="NOT GOOD")
-                    elif check == 0 and check != self.last_check.get():
-                        self.status_label.config(text="")
+    def update_scale(self):
+        if self.connect_button.cget("text") == "DISCONNECT" and self.flag_tare.get() == False:
+            try:
+                if self.part.get() != "":
+                    part = ast.literal_eval(self.part.get())
                     
-                    self.last_check.set(check)
-                    self.scale.set(scale)
-                    self.weight_label.config(text=scale)
+                    response = self.get_weight(part["std"], part["unit"])
+                    if response['status'] == 200:
+                        weight = response['data']['weight']
+                        check = response['data']['check']
+
+                        if part['unit'] == 'kg':
+                            scale = f"{float(format(weight, '.2f'))} {part['unit']}"
+                        else:
+                            scale = f"{int(weight)} {part['unit']}"
+
+                        if check == 1 and check != self.last_check.get():
+                            self.play_tone("OK")
+                            self.check_label.config(foreground='green')
+                            self.check_label.config(text="QTY GOOD")
+                        elif check == 2 and check != self.last_check.get():
+                            self.play_tone("NG")
+                            self.check_label.config(foreground='red')
+                            self.check_label.config(text="NOT GOOD")
+                        elif check == 0 and check != self.last_check.get():
+                            self.check_label.config(text="")
+                        
+                        self.last_check.set(check)
+                        self.scale.set(scale)
+                        self.weight_label.config(text=scale)
+            except Exception as e:
+                print(f"An error occurred: {e}")
 
         # Schedule the next update
         self.after(50, self.update_scale)  # Update every second
@@ -437,7 +513,7 @@ class Main(ttk.Frame):
             return text.isdigit() and int(value_if_allowed) > 0
         return True
     
-    async def play_tone(self, status):
+    def play_tone(self, status):
         current_dir = os.path.dirname(os.path.abspath(__file__))
         filename = ""
         if status == "OK":
