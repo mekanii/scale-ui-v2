@@ -108,7 +108,7 @@ class Main(ttk.Frame):
         content_frame.grid_rowconfigure(1, weight=0)
         content_frame.grid_rowconfigure(2, weight=0)
         content_frame.grid_rowconfigure(3, weight=0)
-        content_frame.grid_rowconfigure(4, weight=1)
+        content_frame.grid_rowconfigure(4, weight=0)
         content_frame.grid_columnconfigure(0, weight=1, minsize=100)
         content_frame.grid_columnconfigure(1, weight=1, minsize=100)
         content_frame.grid_columnconfigure(2, weight=1, minsize=100)
@@ -165,10 +165,11 @@ class Main(ttk.Frame):
         status_labelframe.grid(row=0, column=2, columnspan=2, sticky=NSEW, padx=5, pady=5)
 
         self.weight_label = ttk.Label(content_frame, textvariable=self.scale, justify=RIGHT, anchor=E, font=('Arial', 96))
+        # self.weight_label = ttk.Label(content_frame, text='', justify=RIGHT, anchor=E, font=('Arial', 96))
         self.weight_label.grid(row=3, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
 
         self.status_label = ttk.Label(content_frame, justify=RIGHT, anchor=E, font=('Arial', 56))
-        self.status_label.grid(row=3, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
+        self.status_label.grid(row=4, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
 
         self.update_com_ports()
 
@@ -260,7 +261,7 @@ class Main(ttk.Frame):
         try:
             str_request = json.dumps(request) + '\n'
             self.serial_connection.write(str_request.encode('utf-8'))
-            print(f"Sent: {str_request.strip()}")
+            # print(f"Sent: {str_request.strip()}")
         except Exception as e:
             print(f"Failed to send data: {e}")
             return False
@@ -269,7 +270,7 @@ class Main(ttk.Frame):
     def read_response(self):
         try:
             str_response = self.serial_connection.readline().decode('utf-8').strip()
-            print(f"Received: {str_response}")
+            # print(f"Received: {str_response}")
             return str_response
         except Exception as e:
             print(f"Failed to read data: {e}")
@@ -278,7 +279,7 @@ class Main(ttk.Frame):
     def parse_json(self, str_response):
         try:
             response = json.loads(str_response)
-            print(f"Parsed JSON: {response}")
+            # print(f"Parsed JSON: {response}")
             return response
         except json.JSONDecodeError as e:
             print(f"Failed to decode JSON: {e}")
@@ -352,7 +353,7 @@ class Main(ttk.Frame):
     def get_weight(self, std, unit):
         if self.serial_connection and self.serial_connection.is_open:
             request = {
-                "cmd": 7,
+                "cmd": 8,
                 "data": {
                     "std": std,
                     "unit": unit
@@ -369,24 +370,24 @@ class Main(ttk.Frame):
     def toggle_connect(self):
         current_text = self.connect_button.cget("text")
         if current_text == "CONNECT":
-            # if self.com_port.get() == "":
-            #     return
+            if self.com_port.get() == "":
+                return
 
-            # if self.connect_to_com_port():
-            self.connect_button.config(text="DISCONNECT", bootstyle="DANGER")
-            self.select_com_combobox.config(state="disabled")
-            self.select_part_combobox.config(state="readonly")
-            self.update_scale()
+            if self.connect_to_com_port():
+                self.connect_button.config(text="DISCONNECT", bootstyle="DANGER")
+                self.select_com_combobox.config(state="disabled")
+                self.select_part_combobox.config(state="readonly")
+                self.update_scale()
         else:
-            # if self.disconnect_from_com_port():
-            self.connect_button.config(text="CONNECT", bootstyle="INFO")
-            self.select_com_combobox.config(state="readonly")
-            self.select_part_combobox.config(state="disabled")
-            self.scale.set("")
+            if self.disconnect_from_com_port():
+                self.connect_button.config(text="CONNECT", bootstyle="INFO")
+                self.select_com_combobox.config(state="readonly")
+                self.select_part_combobox.config(state="disabled")
+                self.scale.set("")
 
     def connect_to_com_port(self):
         try:
-            self.serial_connection = serial.Serial(self.com_port.get(), 9600, timeout=1)
+            self.serial_connection = serial.Serial(self.com_port.get(), 115200, timeout=1)
             return True
         except Exception as e:
             print(f"Failed to connect to {self.com_port.get()}: {e}")
@@ -403,34 +404,33 @@ class Main(ttk.Frame):
             if self.part.get() != "":
                 part = ast.literal_eval(self.part.get())
                 
-                # weight = 0.00
                 response = self.get_weight(part["std"], part["unit"])
                 if response['status'] == 200:
                     weight = response['data']['weight']
                     check = response['data']['check']
 
                     if part['unit'] == 'kg':
-                        weight = f"{max(0, float(format(weight, '.2f')))} {part['unit']}"
+                        scale = f"{float(format(weight, '.2f'))} {part['unit']}"
                     else:
-                        weight = f"{max(0, int(weight))} {part['unit']}"
+                        scale = f"{int(weight)} {part['unit']}"
+
                     if check == 1 and check != self.last_check.get():
-                        # self.tasks.append(asyncio.run_coroutine_threadsafe(self.play_tone("OK"), self.loop))
-                        self.play_tone("OK")
-                        self.status_label.config(fg='green')
+                        # self.play_tone("OK")
+                        self.status_label.config(foreground='green')
                         self.status_label.config(text="QTY GOOD")
                     elif check == 2 and check != self.last_check.get():
-                        # self.tasks.append(asyncio.run_coroutine_threadsafe(self.play_tone("NG"), self.loop))
-                        self.play_tone("NG")
-                        self.status_label.config(fg='red')
+                        # self.play_tone("NG")
+                        self.status_label.config(foreground='red')
                         self.status_label.config(text="NOT GOOD")
                     elif check == 0 and check != self.last_check.get():
                         self.status_label.config(text="")
                     
-                    self.last_check = check
-                    self.scale.set(f'{weight} {part["unit"]}')
+                    self.last_check.set(check)
+                    self.scale.set(scale)
+                    self.weight_label.config(text=scale)
 
         # Schedule the next update
-        self.after(1000, self.update_scale)  # Update every second
+        self.after(50, self.update_scale)  # Update every second
 
     def validate_numeric_input(self, action, value_if_allowed, text):
         if action == '1':
