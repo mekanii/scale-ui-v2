@@ -319,20 +319,20 @@ class PartsFrame(ttk.Frame):
 
                 for part in self.parts:
                     part_frame = ttk.Frame(self.cf, style='PartFrame.TFrame')
-                    ttk.Button(part_frame, text="DELETE", command=lambda: self.delete_dialog(part['id'])).pack(side=RIGHT, padx=(5, 0))
-                    ttk.Button(part_frame, text="MODIFY", command=lambda: self.open_dialog(part)).pack(side=RIGHT, padx=(0, 5))
+                    ttk.Button(part_frame, text="MODIFY", command=lambda p=part: self.open_dialog(p)).pack(side=RIGHT, padx=(5, 0))
+                    ttk.Button(part_frame, text="DELETE", command=lambda p=part: self.delete_dialog(p['id'])).pack(side=RIGHT, padx=(0, 5))
 
-                    
                     self.cf.add(child=part_frame, title=f"{part['name']}\n{part['std']} {part['unit']}")
             else:
                 self.notificatiion("Get Parts", response['message'], False)
         except Exception as e:
             self.notificatiion("Get Parts", f"An error occurred: {e}", False)
     
-    def validate_numeric_input(self, action, value_if_allowed, text):
-        if action == '1':
-            return text.isdigit() and int(value_if_allowed) > 0
-        return True
+    def validate_numeric_input(self, P):
+        """Validate input to allow only numeric values."""
+        if P == "" or P.replace('.', '', 1).isdigit():  # Allow empty input or numeric input
+            return True
+        return False
 
     def handle_get_stable_weight(self):
         try:
@@ -382,13 +382,13 @@ class PartsFrame(ttk.Frame):
     def open_dialog(self, part=None):
         dialog = tk.Toplevel(self, width=400)
 
-        ttk.Label(dialog, text="Part Name:").pack(padx=20, pady=(10, 0), side=TOP, fill=X, anchor=W)
+        ttk.Label(dialog, text="Part Name").pack(padx=20, pady=(10, 0), side=TOP, fill=X, anchor=W)
         part_name_entry = ttk.Entry(dialog)
         part_name_entry.pack(padx=20, pady=10, side=TOP, fill=X, anchor=W)
 
-        numeric_vcmd = (self.register(self.validate_numeric_input), '%d', '%P', '%S')
+        numeric_vcmd = (self.register(self.validate_numeric_input), '%P')
 
-        ttk.Label(dialog, text="Standard Weight:").pack(padx=20, pady=(10, 0), side=TOP, fill=X, anchor=W)
+        ttk.Label(dialog, text="Standard Weight").pack(padx=20, pady=(10, 0), side=TOP, fill=X, anchor=W)
         
         part_std_frame = ttk.Frame(dialog)
         part_std_frame.pack(padx=20, pady=10, side=TOP, fill=tk.X)
@@ -401,7 +401,7 @@ class PartsFrame(ttk.Frame):
             command=lambda: self.handle_get_stable_weight(),
         ).pack(side=RIGHT)
 
-        ttk.Label(dialog, text="Unit:").pack(padx=20, pady=(10, 5), side=TOP, fill=X, anchor=W)
+        ttk.Label(dialog, text="Unit").pack(padx=20, pady=(10, 5), side=TOP, fill=X, anchor=W)
         unit_var = tk.StringVar(value='gr')
         ttk.Radiobutton(dialog, text='gr', variable=unit_var, value='gr').pack(padx=20, pady=5, side=TOP, fill=X, anchor=W)
         ttk.Radiobutton(dialog, text='kg', variable=unit_var, value='kg').pack(padx=20, pady=5, side=TOP, fill=X, anchor=W)

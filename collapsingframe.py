@@ -84,6 +84,5 @@ class CollapsingFrame(ttk.Frame):
         for child in self.winfo_children():
             if isinstance(child, ttk.Frame) and child != exception_child and child.winfo_viewable():
                 if hasattr(child, 'btn'):
-                    print(f'child: {child}')
                     child.grid_remove()
                     child.btn.config(image=self.images[1])
