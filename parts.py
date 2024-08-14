@@ -28,8 +28,7 @@ class PartsFrame(ttk.Frame):
         self.grid_rowconfigure(0, weight=0)
         self.grid_rowconfigure(1, weight=0)
         self.grid_rowconfigure(2, weight=0)
-        self.grid_rowconfigure(3, weight=0)
-        self.grid_rowconfigure(4, weight=0)
+        self.grid_rowconfigure(3, weight=1)
         self.grid_columnconfigure(0, weight=1, minsize=100)
         self.grid_columnconfigure(1, weight=1, minsize=100)
         self.grid_columnconfigure(2, weight=1, minsize=100)
@@ -70,18 +69,17 @@ class PartsFrame(ttk.Frame):
             text='CREATE',
             bootstyle=SUCCESS,
             state=DISABLED,
-            # command=self.open_dialog
+            command=self.open_dialog
         )
         self.create_button.grid(row=2, column=3, sticky=NSEW, ipady=10, padx=5, pady=5)
         
-        self.cf = CollapsingFrame(self)
-        self.cf.grid(row=3, column=0, columnspan=4, sticky=NSEW, padx=5, pady=5)
+        scrolled_frame = ScrolledFrame(self)
+        scrolled_frame.grid(row=3, column=0, columnspan=4, sticky=NSEW)
 
-        for part in self.parts:
-            group = ttk.Frame(self.cf, padding=10)
-            # for x in range(5):
-            #     ttk.Checkbutton(group1, text=f'Option {x + 1}').pack(fill=X)
-            self.cf.add(child=group, title=part['name'], subtitle=f"{part['std']} {part['unit']}")
+        self.cf = CollapsingFrame(scrolled_frame)
+        self.cf.pack(fill=BOTH, expand=True, padx=(5, 20))
+
+        # self.open_dialog()
 
         self.update_com_ports()
 
@@ -250,7 +248,22 @@ class PartsFrame(ttk.Frame):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
                 "cmd": 6,
-                "data": id
+                "data": {
+                    "id": id
+                }
+            }
+            if GlobalConfig.send_request(request):
+                str_response = GlobalConfig.read_response()
+                if str_response:
+                    return GlobalConfig.parse_json(str_response)
+        else:
+            print("Serial connection is not open.")
+        return None
+
+    def get_stable_weight(self):
+        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
+            request = {
+                "cmd": 9
             }
             if GlobalConfig.send_request(request):
                 str_response = GlobalConfig.read_response()
@@ -295,19 +308,145 @@ class PartsFrame(ttk.Frame):
                 for child in self.cf.winfo_children():
                     child.destroy()
 
+                self.style = ttk.Style()
+                self.style.configure(
+                    'PartFrame.TFrame',
+                    background=self.style.lookup('TFrame', 'background'),
+                    foreground='white',
+                    borderwidth=0,
+                    padding=10
+                )
+
                 for part in self.parts:
-                    group = ttk.Frame(self.cf, padding=10, bootstyle=DARK)
-                    ttk.Button(group, text="MODIFY").pack(side=RIGHT, padx=5)
-                    ttk.Button(group, text="DELETE").pack(side=RIGHT, padx=5)
-                    # for x in range(5):
-                    #     ttk.Checkbutton(group1, text=f'Option {x + 1}').pack(fill=X)
-                    self.cf.add(child=group, title=f"{part['name']}\n{part['std']} {part['unit']}")
-                # self.create_popup(self.select_part_combobox, "part", self.select_part_options, self.part)
+                    part_frame = ttk.Frame(self.cf, style='PartFrame.TFrame')
+                    ttk.Button(part_frame, text="DELETE", command=lambda: self.delete_dialog(part['id'])).pack(side=RIGHT, padx=(5, 0))
+                    ttk.Button(part_frame, text="MODIFY", command=lambda: self.open_dialog(part)).pack(side=RIGHT, padx=(0, 5))
+
+                    
+                    self.cf.add(child=part_frame, title=f"{part['name']}\n{part['std']} {part['unit']}")
             else:
                 self.notificatiion("Get Parts", response['message'], False)
         except Exception as e:
             self.notificatiion("Get Parts", f"An error occurred: {e}", False)
+    
+    def validate_numeric_input(self, action, value_if_allowed, text):
+        if action == '1':
+            return text.isdigit() and int(value_if_allowed) > 0
+        return True
 
+    def handle_get_stable_weight(self):
+        try:
+            response = self.get_stable_weight()
+            if response['status'] == 200:
+                self.part_std_entry.delete(0, tk.END)
+                self.part_std_entry.insert(0, f"{int(response['data'])}")
+                self.notificatiion("Get Stable Weight", response['message'], True)
+            else:
+                self.notificatiion("Get Stable Weight", response['message'], False)
+        except Exception as e:
+            self.notificatiion("Get Stable Weight", f"An error occurred: {e}", False)
 
+    def handle_submit(self, name, std, unit, dialog, part=None):
+        try:
+            if part:
+                response = self.update_part(part['id'], name, std, unit)
+                if response['status'] == 200:
+                    self.notificatiion("Update Part", response['message'], True)
+                else:
+                    self.notificatiion("Update Part", response['message'], False)
+            else:
+                response = self.create_part(name, std, unit)
+                if response['status'] == 200:
+                    self.notificatiion("Create Part", response['message'], True)
+                else:
+                    self.notificatiion("Create Part", response['message'], False)
+        except Exception as e:
+            self.notificatiion("Create/Update Part", f"An error occurred: {e}", False)
+        finally:
+            dialog.destroy()
+            self.handle_get_parts()
 
+    def handle_delete(self, part_id, dialog):
+        try:
+            response = self.delete_part(part_id)
+            if response and response['status'] == 200:
+                self.notificatiion("Delete Part", response['message'], True)
+                self.handle_get_parts()
+            else:
+                self.notificatiion("Delete Part", response['message'], False)
+        except Exception as e:
+            self.notificatiion("Delete Part", f"An error occurred: {e}", False)
+        finally:
+            dialog.destroy()
 
+    def open_dialog(self, part=None):
+        dialog = tk.Toplevel(self, width=400)
+
+        ttk.Label(dialog, text="Part Name:").pack(padx=20, pady=(10, 0), side=TOP, fill=X, anchor=W)
+        part_name_entry = ttk.Entry(dialog)
+        part_name_entry.pack(padx=20, pady=10, side=TOP, fill=X, anchor=W)
+
+        numeric_vcmd = (self.register(self.validate_numeric_input), '%d', '%P', '%S')
+
+        ttk.Label(dialog, text="Standard Weight:").pack(padx=20, pady=(10, 0), side=TOP, fill=X, anchor=W)
+        
+        part_std_frame = ttk.Frame(dialog)
+        part_std_frame.pack(padx=20, pady=10, side=TOP, fill=tk.X)
+        self.part_std_entry = ttk.Entry(part_std_frame, validate='key', validatecommand=numeric_vcmd, justify=RIGHT)
+        self.part_std_entry.pack(side=LEFT, fill=X, anchor=W)
+
+        ttk.Button(
+            part_std_frame,
+            text="Get weight (gr)",
+            command=lambda: self.handle_get_stable_weight(),
+        ).pack(side=RIGHT)
+
+        ttk.Label(dialog, text="Unit:").pack(padx=20, pady=(10, 5), side=TOP, fill=X, anchor=W)
+        unit_var = tk.StringVar(value='gr')
+        ttk.Radiobutton(dialog, text='gr', variable=unit_var, value='gr').pack(padx=20, pady=5, side=TOP, fill=X, anchor=W)
+        ttk.Radiobutton(dialog, text='kg', variable=unit_var, value='kg').pack(padx=20, pady=5, side=TOP, fill=X, anchor=W)
+
+        if part:
+            dialog.title("Modify Part")
+            part_name_entry.insert(0, part['name'])
+            self.part_std_entry.insert(0, part['std'] if part['unit'] == 'gr' else part['std'] * 1000)
+            unit_var.set(part['unit'])
+        else:
+            dialog.title("Create Part")
+
+        ttk.Button(
+            dialog,
+            text="SUBMIT",
+            command=lambda: self.handle_submit(
+                part_name_entry.get(),
+                int(self.part_std_entry.get()) if unit_var.get() == 'gr' else float(self.part_std_entry.get()) / 1000,
+                unit_var.get(),
+                dialog,
+                part
+            )
+        ).pack(padx=10, pady=10, side=LEFT, fill=tk.X)
+
+        ttk.Button(
+            dialog,
+            text="CANCEL",
+            command=lambda: dialog.destroy()
+        ).pack(padx=10, pady=10, side=RIGHT, fill=tk.X)
+
+    def delete_dialog(self, part_id):
+        dialog = tk.Toplevel(self)
+        dialog.title("Confirm Delete")
+
+        ttk.Label(dialog, text="Are you sure you want to delete this part?").pack(padx=20, pady=10)
+
+        ttk.Button(
+            dialog,
+            text="DELETE",
+            bootstyle=DANGER,
+            command=lambda: self.handle_delete(part_id, dialog)
+        ).pack(side=LEFT, padx=10, pady=10)
+
+        ttk.Button(
+            dialog,
+            text="CANCEL",
+            command=dialog.destroy
+        ).pack(side=RIGHT, padx=10, pady=10)

@@ -18,6 +18,7 @@ class ScaleFrame(ttk.Frame):
 
         pygame.mixer.init()
 
+        self.last_part = tk.StringVar()
         self.part = tk.StringVar()
         self.weight = tk.DoubleVar(value=0.00)
         self.scale = tk.StringVar()
@@ -252,6 +253,19 @@ class ScaleFrame(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
+    def refresh_data_set(self):
+        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
+            request = {
+                "cmd": 12
+            }
+            if GlobalConfig.send_request(request):
+                str_response = GlobalConfig.read_response()
+                if str_response:
+                    return GlobalConfig.parse_json(str_response)
+        else:
+            print("Serial connection is not open.")
+        return None
+
     def tare(self):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
@@ -351,6 +365,16 @@ class ScaleFrame(ttk.Frame):
         except Exception as e:
             self.notificatiion("Get Parts", f"An error occurred: {e}", False)
 
+    def handle_refresh_data_set(self):
+        try:
+            response = self.refresh_data_set()
+            if response['status'] == 200:
+                self.notificatiion("Refresh Data Set", response['message'], True)
+            else:
+                self.notificatiion("Refresh Data Set", response['message'], False)
+        except Exception as e:
+            self.notificatiion("Refresh Data Set", f"An error occurred: {e}", False)
+
     def handle_tare(self):
         self.flag_tare.set(True)
 
@@ -371,6 +395,10 @@ class ScaleFrame(ttk.Frame):
         if self.connect_button.cget("text") == "DISCONNECT" and self.flag_tare.get() == False:
             try:
                 if self.part.get() != "":
+                    if self.last_part.get() != self.part.get():
+                        self.handle_refresh_data_set()
+                        self.last_part.set(self.part.get())
+
                     part = ast.literal_eval(self.part.get())
                     
                     response = self.get_weight(part["std"], part["unit"])

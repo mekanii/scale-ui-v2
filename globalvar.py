@@ -1,3 +1,4 @@
+import time
 import serial
 import serial.tools.list_ports
 import json
@@ -23,8 +24,11 @@ class GlobalConfig:
 
     def read_response():
         try:
-            str_response = GlobalConfig.serial_connection.readline().decode('utf-8').strip()
-            # print(f"Received: {str_response}")
+            while True:
+                str_response = GlobalConfig.serial_connection.readline().decode('utf-8').strip()
+                if str_response:
+                    break
+                time.sleep(0.1)
             return str_response
         except Exception as e:
             print(f"Failed to read data: {e}")

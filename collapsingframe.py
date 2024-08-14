@@ -17,8 +17,8 @@ class CollapsingFrame(ttk.Frame):
 
         # widget images
         self.images = [
-            ttk.PhotoImage(file=IMG_PATH/'icons/chevron-up-24.png'),
-            ttk.PhotoImage(file=IMG_PATH/'icons/chevron-down-24.png')
+            ttk.PhotoImage(name='chevron-up-24', file=IMG_PATH/'icons/chevron-up-24.png'),
+            ttk.PhotoImage(name='chevron-down-24', file=IMG_PATH/'icons/chevron-down-24.png')
         ]
 
         self.style = ttk.Style()
@@ -32,22 +32,6 @@ class CollapsingFrame(ttk.Frame):
         )
 
     def add(self, child, title="", bootstyle=PRIMARY, **kwargs):
-        """Add a child to the collapsible frame
-
-        Parameters:
-
-            child (Frame):
-                The child frame to add to the widget.
-
-            title (str):
-                The title appearing on the collapsible section header.
-
-            bootstyle (str):
-                The style to apply to the collapsible section header.
-
-            **kwargs (Dict):
-                Other optional keyword arguments.
-        """
         if child.winfo_class() != 'TFrame':
             return
 
@@ -55,37 +39,26 @@ class CollapsingFrame(ttk.Frame):
         frm = ttk.Frame(self, bootstyle=style_color)
         frm.grid(row=self.cumulative_rows, column=0, sticky=EW)
 
-        # header title
-        # header = ttk.Label(
-        #     master=frm,
-        #     text=title,
-        #     bootstyle=(style_color, INVERSE)
-        # )
-        # if kwargs.get('textvariable'):
-        #     header.configure(textvariable=kwargs.get('textvariable'))
-        # header.pack(side=LEFT, fill=BOTH, padx=10)
-
         # header toggle button
         def _func(c=child): return self._toggle_open_close(c)
         btn = ttk.Button(
             master=frm,
             text=title,
-            image=self.images[0],
+            image=self.images[1],  # Set to the "closed" state image initially
             compound=LEFT,
             bootstyle=style_color,
             command=_func,
             style='LeftAligned.TButton',
-            padding=(10,10)
+            padding=(10, 10)
         )
         if kwargs.get('textvariable'):
             btn.configure(textvariable=kwargs.get('textvariable'))
         btn.pack(fill=BOTH)
 
-        # ttk.Label(frm, text=subtitle, bootstyle=(style_color, INVERSE)).pack(side=LEFT, fill=BOTH, padx=38, pady=(0,10))
-
         # assign toggle button to child so that it can be toggled
         child.btn = btn
         child.grid(row=self.cumulative_rows + 1, column=0, sticky=NSEW)
+        child.grid_remove()  # Hide the child widget initially
 
         # increment the row assignment
         self.cumulative_rows += 2
@@ -101,7 +74,16 @@ class CollapsingFrame(ttk.Frame):
         """
         if child.winfo_viewable():
             child.grid_remove()
-            child.btn.configure(image=self.images[1])
+            child.btn.configure(image=self.images[1])  # Set to "closed" state image
         else:
+            self._collapse_all_except(child)
             child.grid()
-            child.btn.configure(image=self.images[0])
+            child.btn.configure(image=self.images[0])  # Set to "open" state image
+
+    def _collapse_all_except(self, exception_child):
+        for child in self.winfo_children():
+            if isinstance(child, ttk.Frame) and child != exception_child and child.winfo_viewable():
+                if hasattr(child, 'btn'):
+                    print(f'child: {child}')
+                    child.grid_remove()
+                    child.btn.config(image=self.images[1])
