@@ -19,14 +19,14 @@ class ScaleFrame(ttk.Frame):
 
         pygame.mixer.init()
 
-        current_date = datetime.now().strftime("%Y-%m-%d")
-
+        self.current_date = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d"))
         self.last_part = tk.StringVar()
         self.part = tk.StringVar()
         self.std = tk.StringVar()
         self.weight = tk.DoubleVar(value=0.00)
         self.scale = tk.StringVar()
         self.last_check = tk.IntVar(value=0)
+        self.count_pack = tk.IntVar(value=0)
 
         self.flag_tare = tk.BooleanVar(value=False)
 
@@ -86,10 +86,10 @@ class ScaleFrame(ttk.Frame):
         status_label_frame.grid_rowconfigure(2, weight=0)
         status_label_frame.grid_columnconfigure(0, weight=1)
 
-        self.status_count_label = ttk.Label(status_label_frame, text="0", justify=RIGHT, anchor=E, font=('Segoe UI', 48))
+        self.status_count_label = ttk.Label(status_label_frame, textvariable=self.count_pack, justify=RIGHT, anchor=E, font=('Segoe UI', 48))
         self.status_count_label.grid(row=0, sticky=EW, padx=15)
 
-        status_date_label = ttk.Label(status_label_frame, text=current_date, justify=LEFT, anchor=W,  font=('Segoe UI', 18))
+        status_date_label = ttk.Label(status_label_frame, textvariable=self.current_date, justify=LEFT, anchor=W,  font=('Segoe UI', 18))
         status_date_label.grid(row=1, sticky=SW, padx=5, pady=(0,5))
         
         status_label = ttk.Label(status_label_frame, text="Packages", justify=RIGHT, anchor=E, font=('Segoe UI', 18))
@@ -372,6 +372,7 @@ class ScaleFrame(ttk.Frame):
                     if self.last_part.get() != self.part.get():
                         self.handle_refresh_data_set()
                         self.last_part.set(self.part.get())
+                        self.count_pack.set(self.count_log_data(part['name']))
                         self.std.set(f"Standard Weight: {part['std']} {part['unit']}, Hysteresis: {part['hysteresis']:.2f}")
 
                     
@@ -389,6 +390,10 @@ class ScaleFrame(ttk.Frame):
                             self.play_tone("OK")
                             self.check_label.config(foreground='green')
                             self.check_label.config(text="QTY GOOD")
+
+                            self.log_data(part, scale, "OK")
+                            self.count_pack.set(self.count_log_data(part['name']))
+
                         elif check == 2 and check != self.last_check.get():
                             self.play_tone("NG")
                             self.check_label.config(foreground='red')
@@ -404,6 +409,62 @@ class ScaleFrame(ttk.Frame):
 
         # Schedule the next update
         self.after(100, self.update_scale)  # Update every second
+
+    def log_data(self, part, scale, status):
+        # Get the current date in the format yyyy-mm-dd
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        log_filename = f"logs/log-{current_date}.json"
+
+        # Check if the logs directory exists, if not, create it
+        if not os.path.exists("logs"):
+            os.makedirs("logs")
+
+        # Check if the log file exists
+        if not os.path.isfile(log_filename):
+            # Create the log file with an empty list if it doesn't exist
+            with open(log_filename, 'w') as log_file:
+                json.dump([], log_file)
+
+        # Prepare the log entry
+        log_entry = {
+            "date": current_date,
+            "part": part['name'],
+            "std": part['std'],
+            "unit": part['unit'],
+            "hysteresis": part['hysteresis'],
+            "measured": scale,
+            "status": status
+        }
+
+        # Append the log entry to the existing log file
+        with open(log_filename, 'r+') as log_file:
+            # Load existing data
+            data = json.load(log_file)
+            # Append the new entry
+            data.append(log_entry)
+            # Move the cursor to the beginning of the file
+            log_file.seek(0)
+            # Write the updated data back to the file
+            json.dump(data, log_file, indent=4)
+
+    def count_log_data(self, part_name):
+        # Get the current date in the format yyyy-mm-dd
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        log_filename = f"logs/log-{current_date}.json"
+
+        # Check if the log file exists
+        if not os.path.isfile(log_filename):
+            return 0  # Return 0 if the log file does not exist
+
+        # Initialize count
+        count = 0
+
+        # Read the log file and count entries for the specified part
+        with open(log_filename, 'r') as log_file:
+            data = json.load(log_file)
+            count = sum(1 for entry in data if entry['part'] == part_name)
+
+        return count
 
     def validate_numeric_input(self, action, value_if_allowed, text):
         if action == '1':
