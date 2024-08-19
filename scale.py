@@ -202,6 +202,19 @@ class ScaleFrame(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
+    def refresh_data_set(self):
+        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
+            request = {
+                "cmd": 12
+            }
+            if GlobalConfig.send_request(request):
+                str_response = GlobalConfig.read_response()
+                if str_response:
+                    return GlobalConfig.parse_json(str_response)
+        else:
+            print("Serial connection is not open.")
+        return None
+
     def tare(self):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
@@ -215,13 +228,14 @@ class ScaleFrame(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
-    def get_weight(self, std, unit):
+    def get_weight(self, std, unit, hysteresis):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
                 "cmd": 8,
                 "data": {
                     "std": std,
-                    "unit": unit
+                    "unit": unit,
+                    "hysteresis": hysteresis
                 }
             }
             if GlobalConfig.send_request(request):
