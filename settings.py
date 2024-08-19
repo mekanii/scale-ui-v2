@@ -49,6 +49,12 @@ class SettingsFrame(ttk.Frame):
 
         status_label_frame = ttk.Labelframe(self, text='STATUS')
         status_label_frame.grid(row=0, column=2, rowspan=2, columnspan=2, sticky=NSEW, padx=5, pady=5)
+        status_label_frame.grid_columnconfigure(0, weight=1)
+
+        self.status_calfactor_label = ttk.Label(status_label_frame, text="0", justify=RIGHT, anchor=E, font=('Segoe UI', 48))
+        self.status_calfactor_label.grid(row=0, sticky=NSEW, padx=15)
+
+        ttk.Label(status_label_frame, text="Calibration Factor", justify=RIGHT, anchor=E, font=('Segoe UI', 18)).grid(row=1, sticky=SE, padx=15, pady=(0, 5))
 
         self.calibration_button = ttk.Button(
             master=self,
@@ -162,14 +168,13 @@ class SettingsFrame(ttk.Frame):
             if self.connect_to_com_port():
                 self.connect_button.config(text="DISCONNECT", bootstyle="DANGER")
                 self.select_com_combobox.config(state=DISABLED)
-                
                 self.calibration_button.config(state=NORMAL)
+                self.handle_get_calibration_factor()
                 
         else:
             if self.disconnect_from_com_port():
                 self.connect_button.config(text="CONNECT", bootstyle="INFO")
                 self.select_com_combobox.config(state=READONLY)
-                
                 self.calibration_button.config(state=DISABLED)
     
     def connect_to_com_port(self):
@@ -210,6 +215,16 @@ class SettingsFrame(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
+    def get_calibration_factor(self):
+        request = {
+            "cmd": 13
+        }
+        if GlobalConfig.send_request(request):
+            str_response = GlobalConfig.read_response()
+            if str_response:
+                return GlobalConfig.parse_json(str_response)
+        return None
+
     def create_calibration_factor(self, known_weight):
         request = {
             "cmd": 11,
@@ -222,6 +237,17 @@ class SettingsFrame(ttk.Frame):
             if str_response:
                 return GlobalConfig.parse_json(str_response)
         return None
+
+    def handle_get_calibration_factor(self):
+        try:
+            response = self.get_calibration_factor()
+            if response['status'] == 200:
+                self.notificatiion("Get Calibration Factor", response['message'], True)
+                self.status_calfactor_label.config(text=f"{response['data']:.2f}")
+            else:
+                self.notificatiion("Get Calibration Factor", response['message'], False)
+        except Exception as e:
+            self.notificatiion("Get Calibration Factor", f"An error occurred: {e}", False)
 
     def handle_init_calibration(self):
         for widget in self.log_frame.winfo_children():
@@ -316,6 +342,8 @@ class SettingsFrame(ttk.Frame):
                 self.log_label.pack(fill=tk.X)
                 
                 self.notificatiion("Create Calibration Factor", response['message'], True)
+
+                self.handle_get_calibration_factor()
             else:
                 self.notificatiion("Create Calibration Factor", response['message'], False)
         except Exception as e:
