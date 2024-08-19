@@ -202,70 +202,6 @@ class ScaleFrame(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
-    def create_part(self, name, std, unit):
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            request = {
-                "cmd": 4,
-                "data": {
-                    "name": name,
-                    "std": std,
-                    "unit": unit
-                }
-            }
-            if GlobalConfig.send_request(request):
-                str_response = GlobalConfig.read_response()
-                if str_response:
-                    return GlobalConfig.parse_json(str_response)
-        else:
-            print("Serial connection is not open.")
-        return None
-
-    def update_part(self, id, name, std, unit):
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            request = {
-                "cmd": 5,
-                "data": {
-                    "id": id,
-                    "name": name,
-                    "std": std,
-                    "unit": unit
-                }
-            }
-            if GlobalConfig.send_request(request):
-                str_response = GlobalConfig.read_response()
-                if str_response:
-                    return GlobalConfig.parse_json(str_response)
-        else:
-            print("Serial connection is not open.")
-        return None
-
-    def delete_part(self, id):
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            request = {
-                "cmd": 6,
-                "data": id
-            }
-            if GlobalConfig.send_request(request):
-                str_response = GlobalConfig.read_response()
-                if str_response:
-                    return GlobalConfig.parse_json(str_response)
-        else:
-            print("Serial connection is not open.")
-        return None
-
-    def refresh_data_set(self):
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            request = {
-                "cmd": 12
-            }
-            if GlobalConfig.send_request(request):
-                str_response = GlobalConfig.read_response()
-                if str_response:
-                    return GlobalConfig.parse_json(str_response)
-        else:
-            print("Serial connection is not open.")
-        return None
-
     def tare(self):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
@@ -401,7 +337,7 @@ class ScaleFrame(ttk.Frame):
 
                     part = ast.literal_eval(self.part.get())
                     
-                    response = self.get_weight(part["std"], part["unit"])
+                    response = self.get_weight(part["std"], part["unit"], part["hysteresis"])
                     if response['status'] == 200:
                         weight = response['data']['weight']
                         check = response['data']['check']

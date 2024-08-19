@@ -207,14 +207,15 @@ class PartsFrame(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
-    def create_part(self, name, std, unit):
+    def create_part(self, name, std, unit, hysteresis):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
                 "cmd": 4,
                 "data": {
                     "name": name,
                     "std": std,
-                    "unit": unit
+                    "unit": unit,
+                    "hysteresis": hysteresis
                 }
             }
             if GlobalConfig.send_request(request):
@@ -225,7 +226,7 @@ class PartsFrame(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
-    def update_part(self, id, name, std, unit):
+    def update_part(self, id, name, std, unit, hysteresis):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
                 "cmd": 5,
@@ -233,7 +234,8 @@ class PartsFrame(ttk.Frame):
                     "id": id,
                     "name": name,
                     "std": std,
-                    "unit": unit
+                    "unit": unit,
+                    "hysteresis": hysteresis
                 }
             }
             if GlobalConfig.send_request(request):
@@ -322,7 +324,7 @@ class PartsFrame(ttk.Frame):
                     ttk.Button(part_frame, text="MODIFY", command=lambda p=part: self.open_dialog(p)).pack(side=RIGHT, padx=(5, 0))
                     ttk.Button(part_frame, text="DELETE", command=lambda p=part: self.delete_dialog(p['id'])).pack(side=RIGHT, padx=(0, 5))
 
-                    self.cf.add(child=part_frame, title=f"{part['name']}\n{part['std']} {part['unit']}")
+                    self.cf.add(child=part_frame, title=f"{part['name']}\n{part['std']} {part['unit']}\nHysteresis: {part['hysteresis']:.2f} {part['unit']}")
             else:
                 self.notificatiion("Get Parts", response['message'], False)
         except Exception as e:
@@ -346,16 +348,16 @@ class PartsFrame(ttk.Frame):
         except Exception as e:
             self.notificatiion("Get Stable Weight", f"An error occurred: {e}", False)
 
-    def handle_submit(self, name, std, unit, dialog, part=None):
+    def handle_submit(self, name, std, unit, hysteresis, dialog, part=None):
         try:
             if part:
-                response = self.update_part(part['id'], name, std, unit)
+                response = self.update_part(part['id'], name, std, unit, hysteresis)
                 if response['status'] == 200:
                     self.notificatiion("Update Part", response['message'], True)
                 else:
                     self.notificatiion("Update Part", response['message'], False)
             else:
-                response = self.create_part(name, std, unit)
+                response = self.create_part(name, std, unit, hysteresis)
                 if response['status'] == 200:
                     self.notificatiion("Create Part", response['message'], True)
                 else:
@@ -406,11 +408,16 @@ class PartsFrame(ttk.Frame):
         ttk.Radiobutton(dialog, text='gr', variable=unit_var, value='gr').pack(padx=20, pady=5, side=TOP, fill=X, anchor=W)
         ttk.Radiobutton(dialog, text='kg', variable=unit_var, value='kg').pack(padx=20, pady=5, side=TOP, fill=X, anchor=W)
 
+        ttk.Label(dialog, text="Hysteresis").pack(padx=20, pady=(10, 0), side=TOP, fill=X, anchor=W)
+        part_hysteresis_entry = ttk.Entry(dialog, validate='key', validatecommand=numeric_vcmd, justify=RIGHT)
+        part_hysteresis_entry.pack(padx=20, pady=10, side=TOP, fill=X, anchor=W)
+
         if part:
             dialog.title("Modify Part")
             part_name_entry.insert(0, part['name'])
             self.part_std_entry.insert(0, part['std'] if part['unit'] == 'gr' else part['std'] * 1000)
             unit_var.set(part['unit'])
+            part_hysteresis_entry.insert(0, part['hysteresis'])
         else:
             dialog.title("Create Part")
 
@@ -421,6 +428,7 @@ class PartsFrame(ttk.Frame):
                 part_name_entry.get(),
                 int(self.part_std_entry.get()) if unit_var.get() == 'gr' else float(self.part_std_entry.get()) / 1000,
                 unit_var.get(),
+                part_hysteresis_entry.get(),
                 dialog,
                 part
             )
