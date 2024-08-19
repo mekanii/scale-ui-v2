@@ -8,6 +8,7 @@ import serial.tools.list_ports
 import json
 import ast
 import os
+from datetime import datetime
 import pygame
 from globalvar import GlobalConfig
 
@@ -18,8 +19,11 @@ class ScaleFrame(ttk.Frame):
 
         pygame.mixer.init()
 
+        current_date = datetime.now().strftime("%Y-%m-%d")
+
         self.last_part = tk.StringVar()
         self.part = tk.StringVar()
+        self.std = tk.StringVar()
         self.weight = tk.DoubleVar(value=0.00)
         self.scale = tk.StringVar()
         self.last_check = tk.IntVar(value=0)
@@ -40,6 +44,7 @@ class ScaleFrame(ttk.Frame):
         self.grid_rowconfigure(2, weight=0)
         self.grid_rowconfigure(3, weight=0)
         self.grid_rowconfigure(4, weight=0)
+        self.grid_rowconfigure(5, weight=0)
         self.grid_columnconfigure(0, weight=1, minsize=100)
         self.grid_columnconfigure(1, weight=1, minsize=100)
         self.grid_columnconfigure(2, weight=1, minsize=100)
@@ -76,6 +81,19 @@ class ScaleFrame(ttk.Frame):
 
         status_label_frame = ttk.Labelframe(self, text='STATUS')
         status_label_frame.grid(row=0, column=2, rowspan=2, columnspan=2, sticky=NSEW, padx=5, pady=5)
+        status_label_frame.grid_rowconfigure(0, weight=0)
+        status_label_frame.grid_rowconfigure(1, weight=0)
+        status_label_frame.grid_rowconfigure(2, weight=0)
+        status_label_frame.grid_columnconfigure(0, weight=1)
+
+        self.status_count_label = ttk.Label(status_label_frame, text="0", justify=RIGHT, anchor=E, font=('Segoe UI', 48))
+        self.status_count_label.grid(row=0, sticky=EW, padx=15)
+
+        status_date_label = ttk.Label(status_label_frame, text=current_date, justify=LEFT, anchor=W,  font=('Segoe UI', 18))
+        status_date_label.grid(row=1, sticky=SW, padx=5, pady=(0,5))
+        
+        status_label = ttk.Label(status_label_frame, text="Packages", justify=RIGHT, anchor=E, font=('Segoe UI', 18))
+        status_label.grid(row=1, sticky=SE, padx=15, pady=(0, 5))
 
         self.reload_button = ttk.Button(
             master=self,
@@ -95,11 +113,14 @@ class ScaleFrame(ttk.Frame):
         )
         self.tare_button.grid(row=2, column=3, sticky=NSEW, ipady=10, padx=5, pady=5)
 
-        self.weight_label = ttk.Label(self, textvariable=self.scale, justify=RIGHT, anchor=E, font=('Arial', 96))
-        self.weight_label.grid(row=3, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
+        self.std_label = ttk.Label(self, textvariable=self.std, justify=RIGHT, anchor=E, font=('Segoe UI', 24))
+        self.std_label.grid(row=3, column=0, columnspan=4, sticky=NSEW, padx=15, pady=(15,5))
+        
+        self.weight_label = ttk.Label(self, textvariable=self.scale, justify=RIGHT, anchor=E, font=('Segoe UI', 96))
+        self.weight_label.grid(row=4, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
 
         self.check_label = ttk.Label(self, justify=RIGHT, anchor=E, font=('Arial', 56))
-        self.check_label.grid(row=4, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
+        self.check_label.grid(row=5, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
 
         self.update_com_ports()
 
@@ -202,6 +223,19 @@ class ScaleFrame(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
+    def refresh_data_set(self):
+        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
+            request = {
+                "cmd": 12
+            }
+            if GlobalConfig.send_request(request):
+                str_response = GlobalConfig.read_response()
+                if str_response:
+                    return GlobalConfig.parse_json(str_response)
+        else:
+            print("Serial connection is not open.")
+        return None
+
     def tare(self):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
@@ -215,13 +249,14 @@ class ScaleFrame(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
-    def get_weight(self, std, unit):
+    def get_weight(self, std, unit, hysteresis):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
                 "cmd": 8,
                 "data": {
                     "std": std,
-                    "unit": unit
+                    "unit": unit,
+                    "hysteresis": hysteresis
                 }
             }
             if GlobalConfig.send_request(request):
@@ -255,6 +290,7 @@ class ScaleFrame(ttk.Frame):
                 self.tare_button.config(state=DISABLED)
 
                 self.last_check.set(0)
+                self.std.set("")
                 self.scale.set("")
                 self.check_label.config(text="")
 
@@ -331,11 +367,13 @@ class ScaleFrame(ttk.Frame):
         if self.connect_button.cget("text") == "DISCONNECT" and self.flag_tare.get() == False:
             try:
                 if self.part.get() != "":
+                    part = ast.literal_eval(self.part.get())
+
                     if self.last_part.get() != self.part.get():
                         self.handle_refresh_data_set()
                         self.last_part.set(self.part.get())
+                        self.std.set(f"Standard Weight: {part['std']} {part['unit']}, Hysteresis: {part['hysteresis']:.2f}")
 
-                    part = ast.literal_eval(self.part.get())
                     
                     response = self.get_weight(part["std"], part["unit"], part["hysteresis"])
                     if response['status'] == 200:
@@ -365,7 +403,7 @@ class ScaleFrame(ttk.Frame):
                 print(f"An error occurred: {e}")
 
         # Schedule the next update
-        self.after(50, self.update_scale)  # Update every second
+        self.after(100, self.update_scale)  # Update every second
 
     def validate_numeric_input(self, action, value_if_allowed, text):
         if action == '1':

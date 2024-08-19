@@ -54,6 +54,12 @@ class PartsFrame(ttk.Frame):
 
         status_label_frame = ttk.Labelframe(self, text='STATUS')
         status_label_frame.grid(row=0, column=2, rowspan=2, columnspan=2, sticky=NSEW, padx=5, pady=5)
+        status_label_frame.grid_columnconfigure(0, weight=1)
+
+        self.status_count_label = ttk.Label(status_label_frame, text="0", justify=RIGHT, anchor=E, font=('Segoe UI', 48))
+        self.status_count_label.grid(row=0, sticky=NSEW, padx=15)
+
+        ttk.Label(status_label_frame, text="Parts", justify=RIGHT, anchor=E, font=('Segoe UI', 18)).grid(row=1, sticky=SE, padx=15, pady=(0, 5))
 
         self.reload_button = ttk.Button(
             master=self,
@@ -309,6 +315,8 @@ class PartsFrame(ttk.Frame):
                 
                 for child in self.cf.winfo_children():
                     child.destroy()
+
+                self.status_count_label.config(text=str(len(self.parts)))
 
                 self.style = ttk.Style()
                 self.style.configure(
