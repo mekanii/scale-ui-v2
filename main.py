@@ -10,6 +10,7 @@ import ast
 
 from scale import ScaleFrame
 from parts import PartsFrame
+from summary import SummaryFrame
 from settings import SettingsFrame
 
 PATH = Path(__file__).parent / 'assets'
@@ -31,6 +32,9 @@ class Main(ttk.Frame):
                 name='device-36',
                 file=PATH / 'icons/device-36.png'),
             ttk.PhotoImage(
+                name='book-36',
+                file=PATH / 'icons/book-36.png'),
+            ttk.PhotoImage(
                 name='cog-36',
                 file=PATH / 'icons/cog-36.png')
         ]
@@ -45,8 +49,6 @@ class Main(ttk.Frame):
         self.part = tk.StringVar()
 
         self.serial_connection = None
-
-        v_numeric_cmd = (self.register(self.validate_numeric_input), '%d', '%P', '%S')
 
         # menu buttons
         menu_frame = ttk.Frame(self, bootstyle=SECONDARY)
@@ -73,6 +75,18 @@ class Main(ttk.Frame):
             compound=TOP,
             bootstyle=TOOLBUTTON,
             command=lambda: self.show_parts()
+        )
+        menu_parts_btn.pack(side=TOP, fill=BOTH, ipady=10)
+
+        menu_parts_btn = ttk.Radiobutton(
+            master=menu_frame,
+            image='book-36',
+            text='SUMMARY',
+            value='summary',
+            variable=self.menu_selected,
+            compound=TOP,
+            bootstyle=TOOLBUTTON,
+            command=lambda: self.show_summary()
         )
         menu_parts_btn.pack(side=TOP, fill=BOTH, ipady=10)
 
@@ -104,6 +118,10 @@ class Main(ttk.Frame):
     def show_parts(self):
         self.clear_content()
         PartsFrame(self.content_frame).tkraise()
+
+    def show_summary(self):
+        self.clear_content()
+        SummaryFrame(self.content_frame).tkraise()
 
     def show_settings(self):
         self.clear_content()
