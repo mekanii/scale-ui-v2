@@ -7,6 +7,7 @@ from ttkbootstrap.constants import *
 import tkinter as tk
 import json
 import ast
+import time
 
 from scale import ScaleFrame
 from parts import PartsFrame

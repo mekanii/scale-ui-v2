@@ -44,7 +44,7 @@ class CollapsingFrame(ttk.Frame):
         btn = ttk.Button(
             master=frm,
             text=title,
-            image=self.images[1],  # Set to the "closed" state image initially
+            # image=self.images[1],  # Set to the "closed" state image initially
             compound=LEFT,
             bootstyle=style_color,
             command=_func,
@@ -74,15 +74,15 @@ class CollapsingFrame(ttk.Frame):
         """
         if child.winfo_viewable():
             child.grid_remove()
-            child.btn.configure(image=self.images[1])  # Set to "closed" state image
+            # child.btn.configure(image=self.images[1])  # Set to "closed" state image
         else:
             self._collapse_all_except(child)
             child.grid()
-            child.btn.configure(image=self.images[0])  # Set to "open" state image
+            # child.btn.configure(image=self.images[0])  # Set to "open" state image
 
     def _collapse_all_except(self, exception_child):
         for child in self.winfo_children():
             if isinstance(child, ttk.Frame) and child != exception_child and child.winfo_viewable():
                 if hasattr(child, 'btn'):
                     child.grid_remove()
-                    child.btn.config(image=self.images[1])
+                    # child.btn.config(image=self.images[1])
