@@ -391,7 +391,7 @@ class ScaleFrame(ttk.Frame):
                             self.check_label.config(foreground='green')
                             self.check_label.config(text="QTY GOOD")
 
-                            self.log_data(part, scale, "OK")
+                            self.log_data(part, float(format(weight, '.2f')) if part['unit'] == 'kg' else int(weight), "OK")
                             self.count_pack.set(self.count_log_data(part['name']))
 
                         elif check == 2 and check != self.last_check.get():
@@ -408,11 +408,12 @@ class ScaleFrame(ttk.Frame):
                 print(f"An error occurred: {e}")
 
         # Schedule the next update
-        self.after(100, self.update_scale)  # Update every second
+        self.after(50, self.update_scale)  # Update every second
 
     def log_data(self, part, scale, status):
         # Get the current date in the format yyyy-mm-dd
         current_date = datetime.now().strftime("%Y-%m-%d")
+        current_time = datetime.now().strftime("%H:%M:%S")
         log_filename = f"logs/log-{current_date}.json"
 
         # Check if the logs directory exists, if not, create it
@@ -428,6 +429,7 @@ class ScaleFrame(ttk.Frame):
         # Prepare the log entry
         log_entry = {
             "date": current_date,
+            "time": current_time,
             "part": part['name'],
             "std": part['std'],
             "unit": part['unit'],
