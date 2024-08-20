@@ -9,6 +9,7 @@ import json
 import ast
 import os
 import pygame
+import time
 from globalvar import GlobalConfig
 from collapsingframe import CollapsingFrame
 
@@ -79,11 +80,8 @@ class PartsFrame(ttk.Frame):
         )
         self.create_button.grid(row=2, column=3, sticky=NSEW, ipady=10, padx=5, pady=5)
         
-        scrolled_frame = ScrolledFrame(self)
-        scrolled_frame.grid(row=3, column=0, columnspan=4, sticky=NSEW)
-
-        self.cf = CollapsingFrame(scrolled_frame)
-        self.cf.pack(fill=BOTH, expand=True, padx=(5, 20))
+        self.scrolled_frame = ScrolledFrame(self)
+        self.scrolled_frame.grid(row=3, column=0, columnspan=4, sticky=NSEW)
 
         # self.open_dialog()
 
@@ -282,6 +280,8 @@ class PartsFrame(ttk.Frame):
         return None
 
     def connect_to_com_port(self):
+        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
+           return True
         try:
             GlobalConfig.serial_connection = serial.Serial(GlobalConfig.com_port, 115200, timeout=1)
             return True
@@ -313,9 +313,9 @@ class PartsFrame(ttk.Frame):
                 self.notificatiion("Get Parts", response['message'], True)
                 self.parts = response['data']
                 
-                for child in self.cf.winfo_children():
+                for child in self.scrolled_frame.winfo_children():
                     child.destroy()
-
+                
                 self.status_count_label.config(text=str(len(self.parts)))
 
                 self.style = ttk.Style()
@@ -326,6 +326,11 @@ class PartsFrame(ttk.Frame):
                     borderwidth=0,
                     padding=10
                 )
+
+                self.cf = CollapsingFrame(self.scrolled_frame)
+                self.cf.pack(fill=BOTH, expand=True, padx=(5, 20))
+
+                # time.sleep(1)
 
                 for part in self.parts:
                     part_frame = ttk.Frame(self.cf, style='PartFrame.TFrame')

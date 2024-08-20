@@ -220,6 +220,8 @@ class SummaryFrame(ttk.Frame):
                 # self.status_logs_label.config(text='0')
     
     def connect_to_com_port(self):
+        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
+           return True
         try:
             GlobalConfig.serial_connection = serial.Serial(GlobalConfig.com_port, 115200, timeout=1)
             return True

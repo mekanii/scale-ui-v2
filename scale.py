@@ -298,7 +298,8 @@ class ScaleFrame(ttk.Frame):
                 self.select_part_combobox.config(text="SELECT PART")
 
     def connect_to_com_port(self):
-          # Reference the global variable
+        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
+           return True
         try:
             GlobalConfig.serial_connection = serial.Serial(GlobalConfig.com_port, 115200, timeout=1)
             return True
