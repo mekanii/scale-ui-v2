@@ -5,6 +5,7 @@ import json
 
 class GlobalConfig:
     com_port = ""
+    baud_rate = 19200
     select_com_options = []
     serial_connection = None
 
