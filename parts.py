@@ -283,7 +283,7 @@ class PartsFrame(ttk.Frame):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
            return True
         try:
-            GlobalConfig.serial_connection = serial.Serial(GlobalConfig.com_port, 115200, timeout=1)
+            GlobalConfig.serial_connection = serial.Serial(GlobalConfig.com_port, GlobalConfig.baud_rate, timeout=1)
             return True
         except Exception as e:
             self.notificatiion("OPEN PORT", f"Failed to connect to {GlobalConfig.com_port}: {e}", False)
