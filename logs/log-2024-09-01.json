@@ -1,0 +1,22 @@
+[
+    {
+        "date": "2024-09-01",
+        "time": "15:54:12",
+        "part": "PART 02",
+        "std": 62,
+        "unit": "gr",
+        "hysteresis": 1,
+        "measured": 163,
+        "status": "NG"
+    },
+    {
+        "date": "2024-09-01",
+        "time": "16:37:22",
+        "part": "PART 01",
+        "std": 128,
+        "unit": "gr",
+        "hysteresis": 0.050000001,
+        "measured": 164,
+        "status": "NG"
+    }
+]

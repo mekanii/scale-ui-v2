@@ -63,7 +63,16 @@ class SettingsFrame(ttk.Frame):
             state=DISABLED,
             command=self.handle_init_calibration
         )
-        self.calibration_button.grid(row=2, column=2, columnspan=2, sticky=NSEW, ipady=10, padx=5, pady=5)
+        self.calibration_button.grid(row=2, column=2, sticky=NSEW, ipady=10, padx=5, pady=5)
+
+        self.reset_button = ttk.Button(
+            master=self,
+            text='RESET CALIBRATION',
+            bootstyle=INFO,
+            state=DISABLED,
+            command=self.handle_reset_calibration
+        )
+        self.reset_button.grid(row=2, column=3, sticky=NSEW, ipady=10, padx=5, pady=5)
         
         scrolled_frame = ScrolledFrame(self)
         scrolled_frame.grid(row=3, column=0, columnspan=4, sticky=NSEW)
@@ -169,6 +178,7 @@ class SettingsFrame(ttk.Frame):
                 self.connect_button.config(text="DISCONNECT", bootstyle="DANGER")
                 self.select_com_combobox.config(state=DISABLED)
                 self.calibration_button.config(state=NORMAL)
+                self.reset_button.config(state=NORMAL)
                 self.handle_get_calibration_factor()
                 
         else:
@@ -176,6 +186,7 @@ class SettingsFrame(ttk.Frame):
                 self.connect_button.config(text="CONNECT", bootstyle="INFO")
                 self.select_com_combobox.config(state=READONLY)
                 self.calibration_button.config(state=DISABLED)
+                self.reset_button.config(state=DISABLED)
     
     def connect_to_com_port(self):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
@@ -231,7 +242,7 @@ class SettingsFrame(ttk.Frame):
         request = {
             "cmd": 11,
             "data": {
-                "knownWeight": known_weight
+                "knownWeight": float(known_weight)
             }
         }
         if GlobalConfig.send_request(request):
@@ -301,6 +312,34 @@ class SettingsFrame(ttk.Frame):
                 self.notificatiion("Initialize Calibration", response['message'], False)
         except Exception as e:
             self.notificatiion("Initialize Calibration", f"An error occurred: {e}", False)
+
+    def reset_calibration(self):
+        request = {
+            "cmd": 14
+        }
+        if GlobalConfig.send_request(request):
+            str_response = GlobalConfig.read_response()
+            if str_response:
+                return GlobalConfig.parse_json(str_response)
+        return None
+    
+    def handle_reset_calibration(self):
+        try:    
+            response = self.reset_calibration()
+            if response['status'] == 200:
+                self.log_label = tk.Label(self.log_frame, anchor=W, justify=LEFT, text=f"New calibration factor has been set to: {response['data']}")
+                self.log_label.pack(fill=tk.X)
+
+                self.log_label = tk.Label(self.log_frame, anchor=W, justify=LEFT, text="Reset Calibation complete.")
+                self.log_label.pack(fill=tk.X)
+                
+                self.notificatiion("Reset Calibration Factor", response['message'], True)
+
+                self.handle_get_calibration_factor()
+            else:
+                self.notificatiion("Reset Calibration Factor", response['message'], False)
+        except Exception as e:
+            self.notificatiion("Reset Calibration Factor", f"An error occurred: {e}", False)
 
     def open_dialog(self, part=None):
         dialog = tk.Toplevel(self, width=400)
