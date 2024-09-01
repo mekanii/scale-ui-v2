@@ -286,18 +286,21 @@ class SummaryFrame(ttk.Frame):
                     'std': std,
                     'unit': unit,
                     'hysteresis': hysteresis,
-                    'ok': 0
+                    'ok': 0,
+                    'ng': 0
                 }
 
             if status == "OK":
                 grouped_data[part]['ok'] += 1
+            else:
+                grouped_data[part]['ng'] += 1
 
         table_data = []
         for part, values in grouped_data.items():
-            table_data.append((part, values['std'], values['unit'], values['hysteresis'], values['ok']))
+            table_data.append((part, values['std'], values['unit'], values['hysteresis'], values['ok'], values['ng']))
 
         # Create a Tableview to display the data
-        columns = ['Part', 'Standard', 'Unit', 'Hysteresis', 'OK']
+        columns = ['Part', 'Standard', 'Unit', 'Tolerance', 'OK', 'NG']
         table = Tableview(self.log_frame, coldata=columns, rowdata=table_data)
         table.grid(row=0, column=0, sticky=NSEW)
 
@@ -325,7 +328,7 @@ class SummaryFrame(ttk.Frame):
                         entry['status']
                     ))
 
-            columns = ['Date', 'Time', 'Part', 'Standard', 'Unit', 'Hysteresis', 'Measured', 'Status']
+            columns = ['Date', 'Time', 'Part', 'Standard', 'Unit', 'Tolerance', 'Measured', 'Status']
             Tableview(None, coldata=columns, rowdata=export_data, delimiter=';').export_all_records()
 
     
