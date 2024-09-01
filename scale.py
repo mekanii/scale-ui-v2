@@ -374,7 +374,7 @@ class ScaleFrame(ttk.Frame):
                         self.handle_refresh_data_set()
                         self.last_part.set(self.part.get())
                         self.count_pack.set(self.count_log_data(part['name']))
-                        self.std.set(f"Standard Weight: {part['std']} {part['unit']}, Hysteresis: {part['hysteresis']:.2f}")
+                        self.std.set(f"Standard Weight: {part['std']} {part['unit']}, Tolerance: {part['hysteresis']:.2f}")
 
                     
                     response = self.get_weight(part["std"], part["unit"], part["hysteresis"])
@@ -399,6 +399,9 @@ class ScaleFrame(ttk.Frame):
                             self.play_tone("NG")
                             self.check_label.config(foreground='red')
                             self.check_label.config(text="NOT GOOD")
+
+                            self.log_data(part, float(format(weight, '.2f')) if part['unit'] == 'kg' else int(weight), "NG")
+                            self.count_pack.set(self.count_log_data(part['name']))
                         elif check == 0 and check != self.last_check.get():
                             self.check_label.config(text="")
                         
