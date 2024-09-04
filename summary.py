@@ -329,6 +329,6 @@ class SummaryFrame(ttk.Frame):
                     ))
 
             columns = ['Date', 'Time', 'Part', 'Standard', 'Unit', 'Tolerance', 'Measured', 'Status']
-            Tableview(None, coldata=columns, rowdata=export_data, delimiter=';').export_all_records()
+        Tableview(None, coldata=columns, rowdata=export_data, delimiter=';').export_all_records()
 
     
