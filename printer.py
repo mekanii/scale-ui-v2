@@ -10,21 +10,18 @@ import ast
 import os
 import pygame
 import time
+import cups
 from globalvar import GlobalConfig
 from collapsingframe import CollapsingFrame
 
-class PartsFrame(ttk.Frame):
+class PrinterFrame(ttk.Frame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.grid(row=0, column=0, sticky=NSEW, padx=5, pady=5)
-
-        self.popups = {
-            "com": None
-        }
         
         GlobalConfig.select_com_options = GlobalConfig.get_available_com_ports()
 
-        self.parts = []
+        self.printers = []
 
         self.grid_rowconfigure(0, weight=0)
         self.grid_rowconfigure(1, weight=0)
@@ -40,121 +37,65 @@ class PartsFrame(ttk.Frame):
 
         ttk.Label(
             self, 
-            text="Parts Standard", 
+            text="Printer Settings", 
             font=('Segoe UI', 42)
         ).grid(row=0, column=0, columnspan=2, sticky=NSEW, padx=5, pady=(10, 20))
-
-        self.create_button = ttk.Button(
-            master=self,
-            image='add-circle-36',
-            text='Add Part Standard',
-            bootstyle=SUCCESS,
-            state=NORMAL,
-            command=self.open_dialog
-        )
-        self.create_button.grid(row=1, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=20, pady=5)
-
-        self.reload_button = ttk.Button(
-            master=self,
-            image='sync-36',
-            text='Reload',
-            bootstyle=INFO,
-            state=NORMAL,
-            command=self.handle_get_parts
-        )
-        self.reload_button.grid(row=2, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=20, pady=5)
         
-        self.status_count_label = ttk.Label(self, text="Found 0 parts", font=('Segoe UI', 24))
-        self.status_count_label.grid(row=3, column=0, columnspan=2, sticky=NSEW, padx=20, pady=(20, 5))
+        self.status_count_label = ttk.Label(self, text="Found 0 printers", font=('Segoe UI', 24))
+        self.status_count_label.grid(row=3, column=0, columnspan=2, sticky=NSEW, padx=20, pady=(0, 5))
 
         self.scrolled_frame = ScrolledFrame(self)
         self.scrolled_frame.grid(row=4, column=0, columnspan=7, sticky=NSEW)
 
         # self.open_dialog()
 
-        self.handle_get_parts()
-
-    def create_popup(self, widget, popup_key, options, variable):
-        if self.popups[popup_key] is not None:
-            self.popups[popup_key].destroy()
-
-        popup = tk.Toplevel(self)
-        popup.title('')
-        popup.withdraw()
-
-        x = widget.winfo_rootx()
-        y = widget.winfo_rooty() + widget.winfo_height()
-        popup.geometry(f"+{x}+{y}")
-        popup.bind('<FocusOut>', lambda event: self.hide_popup(popup_key))
-
-        frame = ScrolledFrame(popup)
-        frame.pack(fill=tk.BOTH, expand=True, ipadx=5)
-
-        self.create_popup_options(widget, popup, frame, options, variable)
-
-        self.popups[popup_key] = popup
-
-    def create_popup_options(self, widget, popup, frame, options, variable):
-        for option in options:
-            button = ttk.Button(
-                frame,
-                text=option["name"] if isinstance(option, dict) else option,
-                bootstyle=SECONDARY,
-                command=lambda opt=option: self.select_option(widget, popup, opt, variable)
-            )
-            button.pack(fill=tk.X, ipady=8, pady=5)
-
-    def toggle_popup(self, popup_key, widget, options, variable, event=None):
-        state = str(widget.cget("state"))
-        if state == "disabled":
-            return
-
-        popup = self.popups[popup_key]
-
-        if popup is None or not popup.winfo_exists():
-            self.create_popup(widget, popup_key, options, variable)
-            popup = self.popups[popup_key]
-
-        if popup.winfo_viewable():
-            popup.withdraw()
-        else:
-            x = widget.winfo_rootx()
-            y = widget.winfo_rooty() + widget.winfo_height() + 10
-            popup.geometry(f"+{x}+{y}")
-
-            popup.deiconify()
-            popup.lift()
-            popup.focus_set()
-
-    def hide_popup(self, popup_key, event=None):
-        if self.popups[popup_key]:
-            self.popups[popup_key].destroy()
-            self.popups[popup_key] = None
-
-    def select_option(self, widget, popup, option, variable):
-        if isinstance(variable, tk.StringVar):
-            variable.set(option)
-        else:
-            GlobalConfig.com_port = option
-
-        if isinstance(option, dict) and "name" in option:
-            widget.config(text=option["name"])
-        else:
-            widget.config(text=option)
-        popup.destroy()
+        self.handle_get_printers()
     
-    def get_parts(self):
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            request = {
-                "cmd": 1
-            }
-            if GlobalConfig.send_request(request):
-                str_response = GlobalConfig.read_response()
-                if str_response:
-                    return GlobalConfig.parse_json(str_response)
-        else:
-            print("Serial connection is not open.")
-        return None
+    def get_printers(self):
+        # Connect to the CUPS server
+        conn = cups.Connection()
+
+        # Get a list of printers
+        printers = conn.getPrinters()
+
+        # Get the default printer
+        default_printer = conn.getDefault()
+
+        printer_details = []
+
+        for printer_name, printer_info in printers.items():
+            # Get printer attributes
+            attributes = conn.getPrinterAttributes(printer_name)
+
+            # Extract relevant details
+            # paper_sizes = attributes.get('media-supported', [])
+            default_paper_size = attributes.get('media-default', 'Unknown')
+            color_supported = attributes.get('color-supported', False)
+            default_orientation = attributes.get('orientation-requested-default', 'Unknown')
+
+            default_orientation = attributes.get('orientation-requested-default', 'Unknown')
+
+            printer_details.append({
+                'name': printer_name,
+                'description': printer_info['printer-info'],
+                'location': printer_info.get('printer-location', 'Unknown'),
+                'default_paper_size': default_paper_size,
+                'color_supported': color_supported,
+                'default_orientation': default_orientation,
+                'is_default': (printer_name == default_printer)
+            })
+
+        return printer_details
+
+    def set_default_printer(self, printer_name):
+        try:
+            # Connect to the CUPS server
+            conn = cups.Connection()
+            # Set the specified printer as the default printer
+            conn.setDefault(printer_name)
+            self.notificatiion("Default Printer Set", f"Printer '{printer_name}' has been set as the default printer.", True)
+        except Exception as e:
+            self.notificatiion("Default Printer Set", f"An error occurred while setting the default printer: {e}", False)
 
     def create_part(self, name, std, unit, hysteresis):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
@@ -224,23 +165,6 @@ class PartsFrame(ttk.Frame):
             print("Serial connection is not open.")
         return None
 
-    def connect_to_com_port(self):
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-           return True
-        try:
-            GlobalConfig.serial_connection = serial.Serial(GlobalConfig.com_port, GlobalConfig.baud_rate, timeout=1)
-            return True
-        except Exception as e:
-            self.notificatiion("OPEN PORT", f"Failed to connect to {GlobalConfig.com_port}: {e}", False)
-            return False
-
-    def disconnect_from_com_port(self):
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            GlobalConfig.serial_connection.close()
-            GlobalConfig.serial_connection = None
-            return True
-        return False
-
     def notificatiion(self, title, message, status):
         toast = ToastNotification(
             title=title,
@@ -251,55 +175,49 @@ class PartsFrame(ttk.Frame):
         )
         toast.show_toast()
 
-    def handle_get_parts(self):
+    def handle_get_printers(self):
         try:
-            response = self.get_parts()
-            if response['status'] == 200:
-                self.notificatiion("Get Parts", response['message'], True)
-                self.parts = response['data']
+            printers = self.get_printers()
+            
                 
-                for child in self.scrolled_frame.winfo_children():
-                    child.destroy()
-                
-                self.status_count_label.config(text= f'Found {str(len(self.parts))} parts')
+            for child in self.scrolled_frame.winfo_children():
+                child.destroy()
+            
+            self.status_count_label.config(text= f'Found {str(len(printers))} printers')
 
-                self.style = ttk.Style()
-                self.style.configure(
-                    'PartFrame.TFrame',
-                    background=self.style.lookup('TFrame', 'background'),
-                    foreground='white',
-                    borderwidth=0,
-                    padding=10,
+            self.style = ttk.Style()
+            self.style.configure(
+                'PrinterFrame.TFrame',
+                background=self.style.lookup('TFrame', 'background'),
+                foreground='white',
+                borderwidth=0,
+                padding=10,
+            )
+
+            self.cf = CollapsingFrame(self.scrolled_frame)
+            self.cf.pack(fill=BOTH, expand=True, padx=(5, 20))
+
+            # time.sleep(1)
+
+            for printer in printers:
+                printer_frame = ttk.Frame(self.cf, style='PrinterFrame.TFrame')
+                ttk.Button(
+                    printer_frame, 
+                    text="DEFAULT", 
+                    command=lambda p=printer: self.set_default_printer(p['name']),
+                    bootstyle=INFO,
+                    state=DISABLED if printer['is_default'] else NORMAL
+                ).pack(side=RIGHT, padx=(5, 0))
+
+                # style = ttk.Style()
+                # style.configure("TButton", font=('Segoe UI', 20))
+
+                self.cf.add(
+                    child=printer_frame,
+                    title=f"{printer['description']}\n{printer['location']}\n{printer['default_paper_size']}"
                 )
-
-                self.cf = CollapsingFrame(self.scrolled_frame)
-                self.cf.pack(fill=BOTH, expand=True, padx=(5, 20))
-
-                # time.sleep(1)
-
-                for part in self.parts:
-                    part_frame = ttk.Frame(self.cf, style='PartFrame.TFrame')
-                    ttk.Button(
-                        part_frame,
-                        text="MODIFY",
-                        command=lambda p=part: self.open_dialog(p),
-                        bootstyle=INFO
-                    ).pack(side=RIGHT, padx=(5, 0))
-                    ttk.Button(
-                        part_frame,
-                        text="DELETE",
-                        command=lambda p=part: self.delete_dialog(p['id']),
-                        bootstyle=DANGER
-                    ).pack(side=RIGHT, padx=(0, 5))
-
-                    # style = ttk.Style()
-                    # style.configure("TButton", font=('Segoe UI', 20))
-                    
-                    self.cf.add(child=part_frame, title=f"{part['name']}\n{part['std']} {part['unit']}\nTolerance: {part['hysteresis']:.2f} {part['unit']}")
-            else:
-                self.notificatiion("Get Parts", response['message'], False)
         except Exception as e:
-            self.notificatiion("Get Parts", f"An error occurred: {e}", False)
+            self.notificatiion("Get Printers", f"An error occurred: {e}", False)
     
     def validate_numeric_input(self, P):
         """Validate input to allow only numeric values."""
@@ -392,15 +310,9 @@ class PartsFrame(ttk.Frame):
         else:
             dialog.title("Create Part")
 
-        action_frame = ttk.Frame(dialog)
-        action_frame.pack(padx=20, pady=10, side=BOTTOM, fill=tk.X)
-        action_frame.grid_columnconfigure(0, weight=1)
-        action_frame.grid_columnconfigure(1, weight=1)
-
         ttk.Button(
-            action_frame,
+            dialog,
             text="SUBMIT",
-            bootstyle=SUCCESS,
             command=lambda: self.handle_submit(
                 part_name_entry.get(),
                 int(self.part_std_entry.get()) if unit_var.get() == 'gr' else float(self.part_std_entry.get()) / 1000,
@@ -409,40 +321,11 @@ class PartsFrame(ttk.Frame):
                 dialog,
                 part
             )
-        ).grid(row=0, column=0, sticky=NSEW, padx=(0, 5))
+        ).pack(padx=10, pady=10, side=LEFT, fill=tk.X)
 
         ttk.Button(
-            action_frame,
+            dialog,
             text="CANCEL",
-            bootstyle=SECONDARY,
             command=lambda: dialog.destroy()
-        ).grid(row=0, column=1, sticky=NSEW, padx=(5, 0))
+        ).pack(padx=10, pady=10, side=RIGHT, fill=tk.X)
 
-    def delete_dialog(self, part_id):
-        dialog = tk.Toplevel(self)
-        dialog.title("Confirm Delete")
-
-        ttk.Label(
-            dialog, 
-            text="Are you sure you want to delete\nthis part?",
-            font=('Segoe UI', 20)
-        ).pack(padx=20, pady=10)
-
-        action_frame = ttk.Frame(dialog)
-        action_frame.pack(padx=20, pady=10, side=BOTTOM, fill=tk.X)
-        action_frame.grid_columnconfigure(0, weight=1)
-        action_frame.grid_columnconfigure(1, weight=1)
-
-        ttk.Button(
-            action_frame,
-            text="DELETE",
-            bootstyle=DANGER,
-            command=lambda: self.handle_delete(part_id, dialog)
-        ).grid(row=0, column=0, sticky=NSEW, padx=(0, 5))
-
-        ttk.Button(
-            action_frame,
-            text="CANCEL",
-            bootstyle=SECONDARY,
-            command=dialog.destroy
-        ).grid(row=0, column=1, sticky=NSEW, padx=(5, 0))

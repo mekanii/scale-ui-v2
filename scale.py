@@ -31,8 +31,10 @@ class ScaleFrame(ttk.Frame):
         self.count_pack = tk.StringVar()
         self.count_ok = tk.StringVar()
         self.count_ng = tk.StringVar()
+        self.count_ok_setpoint = tk.IntVar(value=0)
 
         self.flag_tare = tk.BooleanVar(value=False)
+        self.flag_pause = tk.BooleanVar(value=False)
 
         self.popups = {
             "com": None,
@@ -247,6 +249,8 @@ class ScaleFrame(ttk.Frame):
             widget.config(text=option)
         popup.destroy()
 
+        self.open_dialog()
+
     def get_parts(self):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
@@ -356,7 +360,7 @@ class ScaleFrame(ttk.Frame):
             self.notificatiion("Tare Status", f"An error occurred: {e}", False)
 
     def update_scale(self):
-        if self.flag_tare.get() == False:
+        if self.flag_tare.get() == False and self.flag_pause.get() == False:
             try:
                 if self.part.get() != "":
                     part = ast.literal_eval(self.part.get())
@@ -365,8 +369,16 @@ class ScaleFrame(ttk.Frame):
                         self.handle_refresh_data_set()
                         self.last_part.set(self.part.get())
                         count, count_ok, count_ng = self.count_log_data(part['name'])
+
+                        if (self.count_ok_setpoint.get() > 0):
+                            qty_packed = self.sum_qty_by_part(part['name'])
+                            count_ok_session = (count_ok - qty_packed) % self.count_ok_setpoint.get()
+                            
+                        else:
+                            count_ok_session = count_ok
+                        
                         self.count_pack.set(f"{count}")
-                        self.count_ok.set(f"{count_ok} OK")
+                        self.count_ok.set(f"[ {count_ok_session} / {self.count_ok_setpoint.get()} ] {count_ok} OK")
                         self.count_ng.set(f"{count_ng} NG")
                         # self.std.set(f"Standard Weight: {part['std']} {part['unit']}, Tolerance: {part['hysteresis']:.2f}")
                         self.part_std.set(f"Standard Weight: {part['std']} {part['unit']}")
@@ -390,9 +402,18 @@ class ScaleFrame(ttk.Frame):
 
                             self.log_data(part, float(format(weight, '.2f')) if part['unit'] == 'kg' else int(weight), "OK")
                             count, count_ok, count_ng = self.count_log_data(part['name'])
+                            
+                            if (self.count_ok_setpoint.get() > 0):
+                                qty_packed = self.sum_qty_by_part(part['name'])
+                                count_ok_session = (count_ok - qty_packed) % self.count_ok_setpoint.get()
+                                if count_ok_session == 0:
+                                    GlobalConfig.print_label(part, self.count_ok_setpoint.get())
+                            else:
+                                count_ok_session = count_ok
+                            
                             self.count_pack.set(f"{count}")
-                            self.count_ok.set(f"{count_ok}")
-                            self.count_ng.set(f"{count_ng}")
+                            self.count_ok.set(f"[ {count_ok_session} / {self.count_ok_setpoint.get()} ] {count_ok} OK")
+                            # self.count_ng.set(f"{count_ng} NG")
 
                         elif check == 2 and check != self.last_check.get():
                             self.play_tone("NG")
@@ -401,9 +422,10 @@ class ScaleFrame(ttk.Frame):
 
                             self.log_data(part, float(format(weight, '.2f')) if part['unit'] == 'kg' else int(weight), "NG")
                             count, count_ok, count_ng = self.count_log_data(part['name'])
+
                             self.count_pack.set(f"{count}")
-                            self.count_ok.set(f"{count_ok}")
-                            self.count_ng.set(f"{count_ng}")
+                            # self.count_ok.set(f"[ {count_ok_session} / {self.count_ok_setpoint.get()} ] {count_ok} OK")
+                            self.count_ng.set(f"{count_ng} NG")
                         elif check == 0 and check != self.last_check.get():
                             self.check_label.config(text="")
                         
@@ -479,10 +501,34 @@ class ScaleFrame(ttk.Frame):
 
         return count, count_ok, count_ng
 
-    def validate_numeric_input(self, action, value_if_allowed, text):
-        if action == '1':
-            return text.isdigit() and int(value_if_allowed) > 0
-        return True
+    def sum_qty_by_part(self, part_name):
+        # Get the current date in the format yyyy-mm-dd
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        log_filename = f"logs/print-job-{current_date}.json"
+
+        # Check if the log file exists
+        if not os.path.isfile(log_filename):
+            print(f"Log file {log_filename} does not exist.")
+            return 0
+
+        # Initialize a variable to store the sum of quantities for the selected part
+        total_qty = 0
+
+        # Read the log file and sum quantities for the selected part
+        with open(log_filename, 'r') as log_file:
+            data = json.load(log_file)
+            for entry in data:
+                if entry['part'] == part_name:
+                    qty = entry.get('qty', 0)
+                    total_qty += qty
+
+        return total_qty
+
+    def validate_numeric_input(self, P):
+        """Validate input to allow only numeric values."""
+        if P == "" or P.replace('.', '', 1).isdigit():  # Allow empty input or numeric input
+            return True
+        return False
     
     def play_tone(self, status):
         current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -494,3 +540,59 @@ class ScaleFrame(ttk.Frame):
         sound_path = os.path.join(current_dir, "assets", "tone", filename)
         pygame.mixer.music.load(sound_path)
         pygame.mixer.music.play()
+
+    def open_dialog(self):
+        dialog = tk.Toplevel(self, width=400)
+
+        self.flag_pause.set(True)
+
+        numeric_vcmd = (self.register(self.validate_numeric_input), '%P')
+
+        ttk.Label(
+            dialog, 
+            text="Set Point",
+            font=('Segoe UI', 20)
+        ).pack(padx=20, pady=(10, 0), side=TOP, fill=X, anchor=W)
+
+        set_point_entry = ttk.Entry(
+            dialog,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT,
+            font=('Segoe UI', 20)
+        )
+        set_point_entry.pack(padx=20, pady=10, side=TOP, fill=X, anchor=W)
+
+        action_frame = ttk.Frame(dialog)
+        action_frame.pack(padx=20, pady=10, side=BOTTOM, fill=tk.X)
+        action_frame.grid_columnconfigure(0, weight=1)
+        action_frame.grid_columnconfigure(1, weight=1)
+
+        ttk.Button(
+            action_frame,
+            text="SUBMIT",
+            bootstyle=SUCCESS,
+            command=lambda: self.handle_submit(
+                set_point_entry.get(),
+                dialog
+            )
+        ).grid(row=0, column=0, sticky=NSEW, padx=(0, 5))
+
+        ttk.Button(
+            action_frame,
+            text="CANCEL",
+            bootstyle=SECONDARY,
+            command=lambda: self.handle_cancel(dialog)
+        ).grid(row=0, column=1, sticky=NSEW, padx=(5, 0))
+
+    def handle_submit(self, set_point, dialog):
+        self.count_ok_setpoint.set(set_point)
+        self.flag_pause.set(False)
+        dialog.destroy()
+
+    def handle_cancel(self, dialog):
+        self.count_ok_setpoint.set(0)
+        self.flag_pause.set(False)
+        dialog.destroy()
+
+    

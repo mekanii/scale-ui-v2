@@ -21,6 +21,7 @@ from scale import ScaleFrame
 from parts import PartsFrame
 from summary import SummaryFrame
 from calibration import CalibrationFrame
+from printer import PrinterFrame
 
 PATH = Path(__file__).parent / 'assets'
 
@@ -92,6 +93,9 @@ class Main(ttk.Frame):
             ttk.PhotoImage(
                 name='downloading-36',
                 file=PATH / 'icons/downloading-36.png'),
+            ttk.PhotoImage(
+                name='printer-36',
+                file=PATH / 'icons/printer-36.png'),
         ]
 
         self.popups = {
@@ -196,6 +200,19 @@ class Main(ttk.Frame):
         )
         self.menu_calibration_btn.pack(side=TOP, fill=BOTH, ipady=10)
 
+        self.menu_printer_btn = ttk.Radiobutton(
+            master=menu_frame,
+            image='printer-36',
+            text='  Printer',
+            value='printer',
+            variable=self.menu_selected,
+            state=NORMAL,
+            compound=LEFT,
+            style='Secondary.Toolbutton',
+            command=lambda: self.show_printer()
+        )
+        self.menu_printer_btn.pack(side=TOP, fill=BOTH, ipady=10)
+
         self.content_frame = ttk.Frame(self)
         self.content_frame.grid(row=0, column=1, sticky=NSEW, padx=5, pady=5)
         self.content_frame.grid_rowconfigure(0, weight=1)  # Add this line
@@ -225,6 +242,10 @@ class Main(ttk.Frame):
     def show_calibration(self):
         self.clear_content()
         CalibrationFrame(self.content_frame).tkraise()
+
+    def show_printer(self):
+        self.clear_content()
+        PrinterFrame(self.content_frame).tkraise()
 
     def clear_content(self):
         # Clear the content frame
