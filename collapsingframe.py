@@ -15,12 +15,6 @@ class CollapsingFrame(ttk.Frame):
         self.columnconfigure(0, weight=1)
         self.cumulative_rows = 0
 
-        # widget images
-        self.images = [
-            ttk.PhotoImage(name='chevron-up-24', file=IMG_PATH/'icons/chevron-up-24.png'),
-            ttk.PhotoImage(name='chevron-down-24', file=IMG_PATH/'icons/chevron-down-24.png')
-        ]
-
         self.style = ttk.Style()
         self.style.configure(
             'LeftAligned.TButton',
@@ -28,7 +22,7 @@ class CollapsingFrame(ttk.Frame):
             background=self.style.lookup('TFrame', 'background'),
             foreground='white',
             borderwidth=0,
-            font=('Arial', 14)
+            font=('Segoe UI', 18)
         )
 
     def add(self, child, title="", bootstyle=PRIMARY, **kwargs):
@@ -45,11 +39,12 @@ class CollapsingFrame(ttk.Frame):
             master=frm,
             text=title,
             # image=self.images[1],  # Set to the "closed" state image initially
+            image='chevron-down-24',
             compound=LEFT,
             bootstyle=style_color,
             command=_func,
             style='LeftAligned.TButton',
-            padding=(10, 10)
+            padding=(10, 10),
         )
         if kwargs.get('textvariable'):
             btn.configure(textvariable=kwargs.get('textvariable'))
@@ -74,10 +69,12 @@ class CollapsingFrame(ttk.Frame):
         """
         if child.winfo_viewable():
             child.grid_remove()
+            child.btn.configure(image='chevron-down-24')
             # child.btn.configure(image=self.images[1])  # Set to "closed" state image
         else:
             self._collapse_all_except(child)
             child.grid()
+            child.btn.configure(image='chevron-up-24')
             # child.btn.configure(image=self.images[0])  # Set to "open" state image
 
     def _collapse_all_except(self, exception_child):
@@ -85,4 +82,4 @@ class CollapsingFrame(ttk.Frame):
             if isinstance(child, ttk.Frame) and child != exception_child and child.winfo_viewable():
                 if hasattr(child, 'btn'):
                     child.grid_remove()
-                    # child.btn.config(image=self.images[1])
+                    child.btn.configure(image='chevron-down-24')

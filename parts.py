@@ -29,68 +29,50 @@ class PartsFrame(ttk.Frame):
         self.grid_rowconfigure(0, weight=0)
         self.grid_rowconfigure(1, weight=0)
         self.grid_rowconfigure(2, weight=0)
-        self.grid_rowconfigure(3, weight=1)
+        self.grid_rowconfigure(3, weight=0)
+        self.grid_rowconfigure(4, weight=1)
         self.grid_columnconfigure(0, weight=1, minsize=100)
         self.grid_columnconfigure(1, weight=1, minsize=100)
         self.grid_columnconfigure(2, weight=1, minsize=100)
         self.grid_columnconfigure(3, weight=1, minsize=100)
+        self.grid_columnconfigure(4, weight=1, minsize=100)
+        self.grid_columnconfigure(5, weight=1, minsize=100)
 
-        self.select_com_combobox = ttk.Menubutton(
-            master=self,
-            text="SELECT COM PORT",
-            bootstyle=SECONDARY,
-            state="readonly",
-        )
-        self.select_com_combobox.grid(row=0, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=5, pady=5)
-        self.select_com_combobox.bind('<Button-1>', lambda event: self.toggle_popup("com", self.select_com_combobox, GlobalConfig.select_com_options, GlobalConfig.com_port))
-        self.create_popup(self.select_com_combobox, "com", GlobalConfig.select_com_options, GlobalConfig.com_port)
-
-        self.connect_button = ttk.Button(
-            master=self,
-            text='CONNECT',
-            bootstyle=INFO,
-            command=self.toggle_connect
-        )
-        self.connect_button.grid(row=1, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=5, pady=5)
-
-        status_label_frame = ttk.Labelframe(self, text='STATUS')
-        status_label_frame.grid(row=0, column=2, rowspan=2, columnspan=2, sticky=NSEW, padx=5, pady=5)
-        status_label_frame.grid_columnconfigure(0, weight=1)
-
-        self.status_count_label = ttk.Label(status_label_frame, text="0", justify=RIGHT, anchor=E, font=('Segoe UI', 48))
-        self.status_count_label.grid(row=0, sticky=NSEW, padx=15)
-
-        ttk.Label(status_label_frame, text="Parts", justify=RIGHT, anchor=E, font=('Segoe UI', 18)).grid(row=1, sticky=SE, padx=15, pady=(0, 5))
-
-        self.reload_button = ttk.Button(
-            master=self,
-            text='RELOAD',
-            bootstyle=INFO,
-            state=DISABLED,
-            command=self.handle_get_parts
-        )
-        self.reload_button.grid(row=2, column=2, sticky=NSEW, ipady=10, padx=5, pady=5)
+        ttk.Label(
+            self, 
+            text="Parts Standard", 
+            font=('Segoe UI', 42)
+        ).grid(row=0, column=0, columnspan=2, sticky=NSEW, padx=5, pady=(10, 20))
 
         self.create_button = ttk.Button(
             master=self,
-            text='CREATE',
+            image='add-circle-36',
+            text='Add Part Standard',
             bootstyle=SUCCESS,
-            state=DISABLED,
+            state=NORMAL,
             command=self.open_dialog
         )
-        self.create_button.grid(row=2, column=3, sticky=NSEW, ipady=10, padx=5, pady=5)
+        self.create_button.grid(row=1, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=20, pady=5)
+
+        self.reload_button = ttk.Button(
+            master=self,
+            image='sync-36',
+            text='Reload',
+            bootstyle=INFO,
+            state=NORMAL,
+            command=self.handle_get_parts
+        )
+        self.reload_button.grid(row=2, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=20, pady=5)
         
+        self.status_count_label = ttk.Label(self, text="Found 0 parts", font=('Segoe UI', 24))
+        self.status_count_label.grid(row=3, column=0, columnspan=2, sticky=NSEW, padx=20, pady=(20, 5))
+
         self.scrolled_frame = ScrolledFrame(self)
-        self.scrolled_frame.grid(row=3, column=0, columnspan=4, sticky=NSEW)
+        self.scrolled_frame.grid(row=4, column=0, columnspan=7, sticky=NSEW)
 
         # self.open_dialog()
 
-        self.update_com_ports()
-
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            self.select_com_combobox.config(text=GlobalConfig.com_port)
-            self.toggle_connect()
-
+        self.handle_get_parts()
 
     def create_popup(self, widget, popup_key, options, variable):
         if self.popups[popup_key] is not None:
@@ -161,43 +143,6 @@ class PartsFrame(ttk.Frame):
             widget.config(text=option)
         popup.destroy()
     
-    def update_com_ports(self):
-        # Check if the connect_button text is "CONNECT"
-        if self.connect_button.cget("text") == "CONNECT":
-            new_com_ports = GlobalConfig.get_available_com_ports()
-            if new_com_ports != GlobalConfig.select_com_options:
-                GlobalConfig.select_com_options = new_com_ports
-                
-                # Update the popup if it's currently visible
-                if self.popups["com"] and self.popups["com"].winfo_exists():
-                    self.create_popup(self.select_com_combobox, "com", GlobalConfig.select_com_options, GlobalConfig.com_port)
-        # Schedule the next update
-        self.after(1000, self.update_com_ports)  # Update every second
-
-    def toggle_connect(self):
-        current_text = self.connect_button.cget("text")
-        if current_text == "CONNECT":
-            if GlobalConfig.com_port == "":
-                return
-
-            if self.connect_to_com_port():
-                self.connect_button.config(text="DISCONNECT", bootstyle="DANGER")
-                self.select_com_combobox.config(state=DISABLED)
-                
-                self.reload_button.config(state=NORMAL)
-                self.create_button.config(state=NORMAL)
-                # self.tare_button.config(state=NORMAL)
-                self.handle_get_parts()
-                
-        else:
-            if self.disconnect_from_com_port():
-                self.connect_button.config(text="CONNECT", bootstyle="INFO")
-                self.select_com_combobox.config(state=READONLY)
-                
-                self.reload_button.config(state=DISABLED)
-                self.create_button.config(state=DISABLED)
-                # self.tare_button.config(state=DISABLED)
-
     def get_parts(self):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
@@ -316,7 +261,7 @@ class PartsFrame(ttk.Frame):
                 for child in self.scrolled_frame.winfo_children():
                     child.destroy()
                 
-                self.status_count_label.config(text=str(len(self.parts)))
+                self.status_count_label.config(text= f'Found {str(len(self.parts))} parts')
 
                 self.style = ttk.Style()
                 self.style.configure(
@@ -324,7 +269,7 @@ class PartsFrame(ttk.Frame):
                     background=self.style.lookup('TFrame', 'background'),
                     foreground='white',
                     borderwidth=0,
-                    padding=10
+                    padding=10,
                 )
 
                 self.cf = CollapsingFrame(self.scrolled_frame)

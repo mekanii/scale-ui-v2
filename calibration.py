@@ -7,7 +7,7 @@ from globalvar import GlobalConfig
 import serial
 import serial.tools.list_ports
 
-class SettingsFrame(ttk.Frame):
+class CalibrationFrame(ttk.Frame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.grid(row=0, column=0, sticky=NSEW, padx=5, pady=5)
@@ -23,68 +23,58 @@ class SettingsFrame(ttk.Frame):
         self.grid_rowconfigure(0, weight=0)
         self.grid_rowconfigure(1, weight=0)
         self.grid_rowconfigure(2, weight=0)
-        self.grid_rowconfigure(3, weight=1)
+        self.grid_rowconfigure(3, weight=0)
+        self.grid_rowconfigure(4, weight=0)
+        self.grid_rowconfigure(5, weight=1)
         self.grid_columnconfigure(0, weight=1, minsize=100)
         self.grid_columnconfigure(1, weight=1, minsize=100)
         self.grid_columnconfigure(2, weight=1, minsize=100)
         self.grid_columnconfigure(3, weight=1, minsize=100)
+        self.grid_columnconfigure(4, weight=1, minsize=100)
+        self.grid_columnconfigure(5, weight=1, minsize=100)
 
-        self.select_com_combobox = ttk.Menubutton(
-            master=self,
-            text="SELECT COM PORT",
-            bootstyle=SECONDARY,
-            state="readonly",
-        )
-        self.select_com_combobox.grid(row=0, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=5, pady=5)
-        self.select_com_combobox.bind('<Button-1>', lambda event: self.toggle_popup("com", self.select_com_combobox, GlobalConfig.select_com_options, GlobalConfig.com_port))
-        self.create_popup(self.select_com_combobox, "com", GlobalConfig.select_com_options, GlobalConfig.com_port)
+        ttk.Label(
+            self, 
+            text="Calibration", 
+            font=('Segoe UI', 42)
+        ).grid(row=0, column=0, columnspan=2, sticky=NSEW, padx=5, pady=(10, 20))
 
-        self.connect_button = ttk.Button(
-            master=self,
-            text='CONNECT',
-            bootstyle=INFO,
-            command=self.toggle_connect
-        )
-        self.connect_button.grid(row=1, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=5, pady=5)
+        ttk.Label(
+            self, 
+            text="Current Calibration Factor", 
+            font=('Segoe UI', 24)
+        ).grid(row=1, column=0, columnspan=2, sticky=NSEW, padx=20)
 
-        status_label_frame = ttk.Labelframe(self, text='STATUS')
-        status_label_frame.grid(row=0, column=2, rowspan=2, columnspan=2, sticky=NSEW, padx=5, pady=5)
-        status_label_frame.grid_columnconfigure(0, weight=1)
-
-        self.status_calfactor_label = ttk.Label(status_label_frame, text="0", justify=RIGHT, anchor=E, font=('Segoe UI', 48))
-        self.status_calfactor_label.grid(row=0, sticky=NSEW, padx=15)
-
-        ttk.Label(status_label_frame, text="Calibration Factor", justify=RIGHT, anchor=E, font=('Segoe UI', 18)).grid(row=1, sticky=SE, padx=15, pady=(0, 5))
-
-        self.calibration_button = ttk.Button(
-            master=self,
-            text='START CALIBRATION',
-            bootstyle=INFO,
-            state=DISABLED,
-            command=self.handle_init_calibration
-        )
-        self.calibration_button.grid(row=2, column=2, sticky=NSEW, ipady=10, padx=5, pady=5)
+        self.status_calfactor_label = ttk.Label(self, text="0", font=('Segoe UI', 36))
+        self.status_calfactor_label.grid(row=2, column=0, columnspan=2, sticky=NSEW, padx=20)
 
         self.reset_button = ttk.Button(
             master=self,
-            text='RESET CALIBRATION',
-            bootstyle=INFO,
-            state=DISABLED,
+            image='reset-36',
+            text='Reset Calibration',
+            bootstyle=SUCCESS,
+            state=NORMAL,
             command=self.handle_reset_calibration
         )
-        self.reset_button.grid(row=2, column=3, sticky=NSEW, ipady=10, padx=5, pady=5)
+        self.reset_button.grid(row=3, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=20, pady=(10, 5))
+
+        self.calibration_button = ttk.Button(
+            master=self,
+            image='play-circle-36',
+            text='Start Calibration',
+            bootstyle=INFO,
+            state=NORMAL,
+            command=self.handle_init_calibration
+        )
+        self.calibration_button.grid(row=4, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=20, pady=5)
         
         scrolled_frame = ScrolledFrame(self)
-        scrolled_frame.grid(row=3, column=0, columnspan=4, sticky=NSEW)
+        scrolled_frame.grid(row=5, column=0, columnspan=6, sticky=NSEW)
 
         self.log_frame = ttk.Frame(scrolled_frame)
         self.log_frame.pack(fill=BOTH, expand=True, padx=(5, 20))
 
-        self.update_com_ports()
-
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            self.select_com_combobox.config(text=GlobalConfig.com_port)
-            self.toggle_connect()
+        self.handle_get_calibration_factor()
 
     def create_popup(self, widget, popup_key, options, variable):
         if self.popups[popup_key] is not None:
@@ -155,56 +145,6 @@ class SettingsFrame(ttk.Frame):
             widget.config(text=option)
         popup.destroy()
     
-    def update_com_ports(self):
-        # Check if the connect_button text is "CONNECT"
-        if self.connect_button.cget("text") == "CONNECT":
-            new_com_ports = GlobalConfig.get_available_com_ports()
-            if new_com_ports != GlobalConfig.select_com_options:
-                GlobalConfig.select_com_options = new_com_ports
-                
-                # Update the popup if it's currently visible
-                if self.popups["com"] and self.popups["com"].winfo_exists():
-                    self.create_popup(self.select_com_combobox, "com", GlobalConfig.select_com_options, GlobalConfig.com_port)
-        # Schedule the next update
-        self.after(1000, self.update_com_ports)  # Update every second
-
-    def toggle_connect(self):
-        current_text = self.connect_button.cget("text")
-        if current_text == "CONNECT":
-            if GlobalConfig.com_port == "":
-                return
-
-            if self.connect_to_com_port():
-                self.connect_button.config(text="DISCONNECT", bootstyle="DANGER")
-                self.select_com_combobox.config(state=DISABLED)
-                self.calibration_button.config(state=NORMAL)
-                self.reset_button.config(state=NORMAL)
-                self.handle_get_calibration_factor()
-                
-        else:
-            if self.disconnect_from_com_port():
-                self.connect_button.config(text="CONNECT", bootstyle="INFO")
-                self.select_com_combobox.config(state=READONLY)
-                self.calibration_button.config(state=DISABLED)
-                self.reset_button.config(state=DISABLED)
-    
-    def connect_to_com_port(self):
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-           return True
-        try:
-            GlobalConfig.serial_connection = serial.Serial(GlobalConfig.com_port, GlobalConfig.baud_rate, timeout=1)
-            return True
-        except Exception as e:
-            self.notificatiion("OPEN PORT", f"Failed to connect to {GlobalConfig.com_port}: {e}", False)
-            return False
-
-    def disconnect_from_com_port(self):
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            GlobalConfig.serial_connection.close()
-            GlobalConfig.serial_connection = None
-            return True
-        return False
-
     def notificatiion(self, title, message, status):
         toast = ToastNotification(
             title=title,
@@ -267,17 +207,41 @@ class SettingsFrame(ttk.Frame):
             widget.destroy()
 
         # Display initialization instructions on log_frame
-        self.log_label = ttk.Label(self.log_frame, anchor=W, justify=LEFT, text="Initialize calibration.")
-        self.log_label.pack(fill=X)
+        self.log_label = ttk.Label(
+            self.log_frame, 
+            anchor=W, 
+            justify=LEFT, 
+            text="Initialize calibration.",
+            font=('Segoe UI', 18)
+        )
+        self.log_label.pack(fill=X, padx=20)
 
-        self.log_label = ttk.Label(self.log_frame, anchor=W, justify=LEFT, text="Place the load cell on a level stable surface.")
-        self.log_label.pack(fill=X)
+        self.log_label = ttk.Label(
+            self.log_frame, 
+            anchor=W, 
+            justify=LEFT, 
+            text="Place the load cell on a level stable surface.",
+            font=('Segoe UI', 18)
+        )
+        self.log_label.pack(fill=X, padx=20)
 
-        self.log_label = ttk.Label(self.log_frame, anchor=W, justify=LEFT, text="Remove any load applied to the load cell.")
-        self.log_label.pack(fill=X)
+        self.log_label = ttk.Label(
+            self.log_frame, 
+            anchor=W, 
+            justify=LEFT, 
+            text="Remove any load applied to the load cell.",
+            font=('Segoe UI', 18)
+        )
+        self.log_label.pack(fill=X, padx=20)
 
-        self.dot_text = ttk.Label(self.log_frame, anchor=W, justify=LEFT, text="")
-        self.dot_text.pack(fill=X)
+        self.dot_text = ttk.Label(
+            self.log_frame, 
+            anchor=W, 
+            justify=LEFT, 
+            text="",
+            font=('Segoe UI', 18)
+        )
+        self.dot_text.pack(fill=X, padx=20)
 
         # Start appending dots synchronously
         for _ in range(10):
@@ -291,14 +255,32 @@ class SettingsFrame(ttk.Frame):
             if response and response['status'] == 200:
                 self.notificatiion("Initialize Calibration", response['message'], True)
 
-                self.log_label = tk.Label(self.log_frame, anchor=W, justify=LEFT, text="Initialize complete.")
-                self.log_label.pack(fill=tk.X)
+                self.log_label = ttk.Label(
+                    self.log_frame, 
+                    anchor=W, 
+                    justify=LEFT, 
+                    text="Initialize complete.",
+                    font=('Segoe UI', 18)
+                )
+                self.log_label.pack(fill=tk.X, padx=20)
 
-                self.log_label = tk.Label(self.log_frame, anchor=W, justify=LEFT, text="Place **Known Weight** on the loadcell.")
-                self.log_label.pack(fill=tk.X)
+                self.log_label = ttk.Label(
+                    self.log_frame, 
+                    anchor=W, 
+                    justify=LEFT, 
+                    text="Place **Known Weight** on the loadcell.",
+                    font=('Segoe UI', 18)
+                )
+                self.log_label.pack(fill=tk.X, padx=20)
 
-                self.dot_text = tk.Label(self.log_frame, anchor=W, justify=LEFT, text="")
-                self.dot_text.pack(fill=tk.X)
+                self.dot_text = ttk.Label(
+                    self.log_frame, 
+                    anchor=W, 
+                    justify=LEFT, 
+                    text="",
+                    font=('Segoe UI', 18)
+                )
+                self.dot_text.pack(fill=tk.X, padx=20)
                 
                 # Start appending dots synchronously
                 for _ in range(10):
@@ -376,11 +358,23 @@ class SettingsFrame(ttk.Frame):
         try:    
             response = self.create_calibration_factor(known_weight)
             if response['status'] == 200:
-                self.log_label = tk.Label(self.log_frame, anchor=W, justify=LEFT, text=f"New calibration factor has been set to: {response['data']}")
-                self.log_label.pack(fill=tk.X)
+                self.log_label = ttk.Label(
+                    self.log_frame, 
+                    anchor=W, 
+                    justify=LEFT, 
+                    text=f"New calibration factor has been set to: {response['data']}",
+                    font=('Segoe UI', 18)
+                )
+                self.log_label.pack(fill=tk.X, padx=20)
 
-                self.log_label = tk.Label(self.log_frame, anchor=W, justify=LEFT, text="Calibation complete.")
-                self.log_label.pack(fill=tk.X)
+                self.log_label = ttk.Label(
+                    self.log_frame, 
+                    anchor=W, 
+                    justify=LEFT, 
+                    text="Calibation complete.",
+                    font=('Segoe UI', 18)
+                )
+                self.log_label.pack(fill=tk.X, padx=20)
                 
                 self.notificatiion("Create Calibration Factor", response['message'], True)
 
@@ -397,3 +391,4 @@ class SettingsFrame(ttk.Frame):
         if P == "" or P.replace('.', '', 1).isdigit():  # Allow empty input or numeric input
             return True
         return False
+

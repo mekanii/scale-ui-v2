@@ -1,3 +1,4 @@
+from pathlib import Path
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from ttkbootstrap.scrolled import ScrolledFrame
@@ -22,11 +23,14 @@ class ScaleFrame(ttk.Frame):
         self.current_date = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d"))
         self.last_part = tk.StringVar()
         self.part = tk.StringVar()
-        self.std = tk.StringVar()
+        self.part_std = tk.StringVar()
+        self.hysteresis = tk.StringVar()
         self.weight = tk.DoubleVar(value=0.00)
         self.scale = tk.StringVar()
         self.last_check = tk.IntVar(value=0)
-        self.count_pack = tk.IntVar(value=0)
+        self.count_pack = tk.StringVar()
+        self.count_ok = tk.StringVar()
+        self.count_ng = tk.StringVar()
 
         self.flag_tare = tk.BooleanVar(value=False)
 
@@ -45,88 +49,134 @@ class ScaleFrame(ttk.Frame):
         self.grid_rowconfigure(3, weight=0)
         self.grid_rowconfigure(4, weight=0)
         self.grid_rowconfigure(5, weight=0)
+        self.grid_rowconfigure(6, weight=0)
+        # self.grid_rowconfigure(7, weight=0)
         self.grid_columnconfigure(0, weight=1, minsize=100)
         self.grid_columnconfigure(1, weight=1, minsize=100)
         self.grid_columnconfigure(2, weight=1, minsize=100)
         self.grid_columnconfigure(3, weight=1, minsize=100)
+        self.grid_columnconfigure(4, weight=1, minsize=100)
+        self.grid_columnconfigure(5, weight=1, minsize=100)
 
-        self.select_com_combobox = ttk.Menubutton(
-            master=self,
-            text="SELECT COM PORT",
-            bootstyle=SECONDARY,
-            state="readonly",
-        )
-        self.select_com_combobox.grid(row=0, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=5, pady=5)
-        self.select_com_combobox.bind('<Button-1>', lambda event: self.toggle_popup("com", self.select_com_combobox, GlobalConfig.select_com_options, GlobalConfig.com_port))
+        ttk.Label(
+            self, 
+            text="Scale", 
+            font=('Segoe UI', 42)
+        ).grid(row=0, column=0, columnspan=2, sticky=NSEW, padx=5, pady=(10, 20))
 
-        self.connect_button = ttk.Button(
-            master=self,
-            text='CONNECT',
-            bootstyle=INFO,
-            command=self.toggle_connect
-        )
-        self.connect_button.grid(row=1, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=5, pady=5)
+        self.status_parts_label = ttk.Label(self, text="Found 0 parts", font=('Segoe UI', 24))
+        self.status_parts_label.grid(row=1, column=0, columnspan=2, sticky=NSEW, padx=20)
 
         self.select_part_combobox = ttk.Menubutton(
             master=self,
-            text="SELECT PART",
+            text="Select Part",
             bootstyle=SECONDARY,
-            state="disabled",
+            state=READONLY,
         )
-        self.select_part_combobox.grid(row=2, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=5, pady=5)
+        self.select_part_combobox.grid(row=2, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=20, pady=5)
         self.select_part_combobox.bind('<Button-1>', lambda event: self.toggle_popup("part", self.select_part_combobox, self.select_part_options, self.part))
-
-        self.create_popup(self.select_com_combobox, "com", GlobalConfig.select_com_options, GlobalConfig.com_port)
         self.create_popup(self.select_part_combobox, "part", self.select_part_options, self.part)
-
-        status_label_frame = ttk.Labelframe(self, text='STATUS')
-        status_label_frame.grid(row=0, column=2, rowspan=2, columnspan=2, sticky=NSEW, padx=5, pady=5)
-        status_label_frame.grid_rowconfigure(0, weight=0)
-        status_label_frame.grid_rowconfigure(1, weight=0)
-        status_label_frame.grid_rowconfigure(2, weight=0)
-        status_label_frame.grid_columnconfigure(0, weight=1)
-
-        self.status_count_label = ttk.Label(status_label_frame, textvariable=self.count_pack, justify=RIGHT, anchor=E, font=('Segoe UI', 48))
-        self.status_count_label.grid(row=0, sticky=EW, padx=15)
-
-        status_date_label = ttk.Label(status_label_frame, textvariable=self.current_date, justify=LEFT, anchor=W,  font=('Segoe UI', 18))
-        status_date_label.grid(row=1, sticky=SW, padx=5, pady=(0,5))
-        
-        status_label = ttk.Label(status_label_frame, text="Packages", justify=RIGHT, anchor=E, font=('Segoe UI', 18))
-        status_label.grid(row=1, sticky=SE, padx=15, pady=(0, 5))
 
         self.reload_button = ttk.Button(
             master=self,
-            text='RELOAD',
-            bootstyle=INFO,
-            state=DISABLED,
+            image='sync-36',
+            text='Reload',
+            style='Info.TButton',
             command=self.handle_get_parts
         )
-        self.reload_button.grid(row=2, column=2, sticky=NSEW, ipady=10, padx=5, pady=5)
+        self.reload_button.grid(row=3, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=20, pady=5)
 
         self.tare_button = ttk.Button(
             master=self,
-            text='TARE',
-            bootstyle=INFO,
-            state=DISABLED,
+            image='reset-36',
+            text='Tare',
+            style='Info.TButton',
             command=self.handle_tare
         )
-        self.tare_button.grid(row=2, column=3, sticky=NSEW, ipady=10, padx=5, pady=5)
+        self.tare_button.grid(row=4, column=0, columnspan=2, sticky=NSEW, ipady=10, padx=20, pady=5)
 
-        self.std_label = ttk.Label(self, textvariable=self.std, justify=RIGHT, anchor=E, font=('Segoe UI', 24))
-        self.std_label.grid(row=3, column=0, columnspan=4, sticky=NSEW, padx=15, pady=(15,5))
+        # self.std_label = ttk.Label(self, textvariable=self.std, justify=RIGHT, anchor=E, font=('Segoe UI', 24))
+        # self.std_label.grid(row=5, column=0, columnspan=6, sticky=NSEW, padx=15, pady=(15,5))
         
-        self.weight_label = ttk.Label(self, textvariable=self.scale, justify=RIGHT, anchor=E, font=('Segoe UI', 96))
-        self.weight_label.grid(row=4, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
+        self.weight_label = ttk.Label(self, textvariable=self.scale, justify=RIGHT, anchor=E, font=('Segoe UI', 200))
+        self.weight_label.grid(row=5, column=0, columnspan=6, sticky=NSEW, padx=15, pady=5)
 
         self.check_label = ttk.Label(self, justify=RIGHT, anchor=E, font=('Arial', 56))
-        self.check_label.grid(row=5, column=0, columnspan=4, sticky=NSEW, padx=15, pady=5)
+        self.check_label.grid(row=6, column=0, columnspan=6, sticky=NSEW, padx=15, pady=5)
 
-        self.update_com_ports()
+        status_label_frame = ttk.Frame(self)
+        status_label_frame.grid(row=0, column=2, rowspan=5, columnspan=4, sticky=NSEW, padx=5, pady=5)
+        status_label_frame.grid_rowconfigure(0, weight=0)
+        status_label_frame.grid_rowconfigure(1, weight=0)
+        status_label_frame.grid_rowconfigure(2, weight=0)
+        status_label_frame.grid_rowconfigure(3, weight=0)
+        status_label_frame.grid_rowconfigure(4, weight=0)
+        status_label_frame.grid_rowconfigure(5, weight=0)
+        status_label_frame.grid_columnconfigure(0, weight=1)
 
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            self.select_com_combobox.config(text=GlobalConfig.com_port)
-            self.toggle_connect()
+        status_date_label = ttk.Label(
+            status_label_frame, 
+            textvariable=self.current_date, 
+            justify=RIGHT, 
+            anchor=E, 
+            font=('Segoe UI', 28)
+        )
+        status_date_label.grid(row=0, sticky=NE, padx=5, pady=(20,0))
+
+        part_std_label = ttk.Label(
+            status_label_frame, 
+            textvariable=self.part_std, 
+            justify=RIGHT, 
+            anchor=E, 
+            font=('Segoe UI', 28)
+        )
+        part_std_label.grid(row=1, sticky=NE, padx=5)
+
+        hysteresis_label = ttk.Label(
+            status_label_frame, 
+            textvariable=self.hysteresis,
+            justify=RIGHT, 
+            anchor=E, 
+            font=('Segoe UI', 28)
+        )
+        hysteresis_label.grid(row=2, sticky=NE, padx=5)
+
+        self.status_count_label = ttk.Label(
+            status_label_frame, 
+            textvariable=self.count_pack, 
+            justify=RIGHT, 
+            anchor=E, 
+            font=('Segoe UI', 72)
+        )
+        self.status_count_label.grid(row=3, sticky=NE, padx=5)
+
+        self.status_count_label = ttk.Label(
+            status_label_frame, 
+            textvariable=self.count_ok,
+            justify=RIGHT, 
+            anchor=E, 
+            font=('Segoe UI', 48)
+        )
+        self.status_count_label.grid(row=4, sticky=NE, padx=5)
+
+        self.status_count_label = ttk.Label(
+            status_label_frame, 
+            textvariable=self.count_ng, 
+            justify=RIGHT, 
+            anchor=E, 
+            font=('Segoe UI', 48)
+        )
+        self.status_count_label.grid(row=5, sticky=NE, padx=5)
+
+        
+        # status_label = ttk.Label(status_label_frame, text="Packages", justify=RIGHT, anchor=E, font=('Segoe UI', 18))
+        # status_label.grid(row=1, sticky=SE, padx=15, pady=(0, 5))
+
+        # self.update_com_ports()
+
+        self.handle_get_parts()
+        self.update_scale()
+        
 
     def create_popup(self, widget, popup_key, options, variable):
         if self.popups[popup_key] is not None:
@@ -197,19 +247,6 @@ class ScaleFrame(ttk.Frame):
             widget.config(text=option)
         popup.destroy()
 
-    def update_com_ports(self):
-        # Check if the connect_button text is "CONNECT"
-        if self.connect_button.cget("text") == "CONNECT":
-            new_com_ports = GlobalConfig.get_available_com_ports()
-            if new_com_ports != GlobalConfig.select_com_options:
-                GlobalConfig.select_com_options = new_com_ports
-                
-                # Update the popup if it's currently visible
-                if self.popups["com"] and self.popups["com"].winfo_exists():
-                    self.create_popup(self.select_com_combobox, "com", GlobalConfig.select_com_options, GlobalConfig.com_port)
-        # Schedule the next update
-        self.after(1000, self.update_com_ports)  # Update every second
-
     def get_parts(self):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
             request = {
@@ -266,55 +303,7 @@ class ScaleFrame(ttk.Frame):
         else:
             print("Serial connection is not open.")
         return None
-
-    def toggle_connect(self):
-        current_text = self.connect_button.cget("text")
-        if current_text == "CONNECT":
-            if GlobalConfig.com_port == "":
-                return
-
-            if self.connect_to_com_port():
-                self.connect_button.config(text="DISCONNECT", bootstyle="DANGER")
-                self.select_com_combobox.config(state=DISABLED)
-                self.select_part_combobox.config(state=READONLY)
-                self.reload_button.config(state=NORMAL)
-                self.tare_button.config(state=NORMAL)
-                self.handle_get_parts()
-                self.update_scale()
-        else:
-            if self.disconnect_from_com_port():
-                self.connect_button.config(text="CONNECT", bootstyle="INFO")
-                self.select_com_combobox.config(state=READONLY)
-                self.select_part_combobox.config(state=DISABLED)
-                self.reload_button.config(state=DISABLED)
-                self.tare_button.config(state=DISABLED)
-
-                self.last_check.set(0)
-                self.std.set("")
-                self.scale.set("")
-                self.check_label.config(text="")
-
-                self.part.set("")
-                self.select_part_combobox.config(text="SELECT PART")
-
-    def connect_to_com_port(self):
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-           return True
-        try:
-            GlobalConfig.serial_connection = serial.Serial(GlobalConfig.com_port, GlobalConfig.baud_rate, timeout=1)
-            return True
-        except Exception as e:
-            self.notificatiion("OPEN PORT", f"Failed to connect to {GlobalConfig.com_port}: {e}", False)
-            return False
-
-    def disconnect_from_com_port(self):
-          # Reference the global variable
-        if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
-            GlobalConfig.serial_connection.close()
-            GlobalConfig.serial_connection = None
-            return True
-        return False
-
+    
     def notificatiion(self, title, message, status):
         toast = ToastNotification(
             title=title,
@@ -331,6 +320,8 @@ class ScaleFrame(ttk.Frame):
             if response['status'] == 200:
                 self.notificatiion("Get Parts", response['message'], True)
                 self.select_part_options = response['data']
+
+                self.status_parts_label.config(text=f"Found {len(self.select_part_options)} parts")
                 
                 self.create_popup(self.select_part_combobox, "part", self.select_part_options, self.part)
             else:
@@ -365,7 +356,7 @@ class ScaleFrame(ttk.Frame):
             self.notificatiion("Tare Status", f"An error occurred: {e}", False)
 
     def update_scale(self):
-        if self.connect_button.cget("text") == "DISCONNECT" and self.flag_tare.get() == False:
+        if self.flag_tare.get() == False:
             try:
                 if self.part.get() != "":
                     part = ast.literal_eval(self.part.get())
@@ -373,8 +364,13 @@ class ScaleFrame(ttk.Frame):
                     if self.last_part.get() != self.part.get():
                         self.handle_refresh_data_set()
                         self.last_part.set(self.part.get())
-                        self.count_pack.set(self.count_log_data(part['name']))
-                        self.std.set(f"Standard Weight: {part['std']} {part['unit']}, Tolerance: {part['hysteresis']:.2f}")
+                        count, count_ok, count_ng = self.count_log_data(part['name'])
+                        self.count_pack.set(f"{count}")
+                        self.count_ok.set(f"{count_ok} OK")
+                        self.count_ng.set(f"{count_ng} NG")
+                        # self.std.set(f"Standard Weight: {part['std']} {part['unit']}, Tolerance: {part['hysteresis']:.2f}")
+                        self.part_std.set(f"Standard Weight: {part['std']} {part['unit']}")
+                        self.hysteresis.set(f"Tolerance: {part['hysteresis']:.2f}")
 
                     
                     response = self.get_weight(part["std"], part["unit"], part["hysteresis"])
@@ -393,7 +389,10 @@ class ScaleFrame(ttk.Frame):
                             self.check_label.config(text="QTY GOOD")
 
                             self.log_data(part, float(format(weight, '.2f')) if part['unit'] == 'kg' else int(weight), "OK")
-                            self.count_pack.set(self.count_log_data(part['name']))
+                            count, count_ok, count_ng = self.count_log_data(part['name'])
+                            self.count_pack.set(f"{count}")
+                            self.count_ok.set(f"{count_ok}")
+                            self.count_ng.set(f"{count_ng}")
 
                         elif check == 2 and check != self.last_check.get():
                             self.play_tone("NG")
@@ -401,7 +400,10 @@ class ScaleFrame(ttk.Frame):
                             self.check_label.config(text="NOT GOOD")
 
                             self.log_data(part, float(format(weight, '.2f')) if part['unit'] == 'kg' else int(weight), "NG")
-                            self.count_pack.set(self.count_log_data(part['name']))
+                            count, count_ok, count_ng = self.count_log_data(part['name'])
+                            self.count_pack.set(f"{count}")
+                            self.count_ok.set(f"{count_ok}")
+                            self.count_ng.set(f"{count_ng}")
                         elif check == 0 and check != self.last_check.get():
                             self.check_label.config(text="")
                         
@@ -460,17 +462,22 @@ class ScaleFrame(ttk.Frame):
 
         # Check if the log file exists
         if not os.path.isfile(log_filename):
-            return 0  # Return 0 if the log file does not exist
+            return 0, 0, 0  # Return 0 if the log file does not exist
 
         # Initialize count
         count = 0
+        count_ok = 0
+        count_ng = 0
 
         # Read the log file and count entries for the specified part
         with open(log_filename, 'r') as log_file:
             data = json.load(log_file)
             count = sum(1 for entry in data if entry['part'] == part_name)
 
-        return count
+            count_ok = sum(1 for entry in data if entry['part'] == part_name and entry['status'] == "OK")
+            count_ng = sum(1 for entry in data if entry['part'] == part_name and entry['status'] == "NG")
+
+        return count, count_ok, count_ng
 
     def validate_numeric_input(self, action, value_if_allowed, text):
         if action == '1':

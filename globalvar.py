@@ -11,7 +11,7 @@ class GlobalConfig:
 
     def get_available_com_ports():
         ports = serial.tools.list_ports.comports()
-        return [port.device for port in ports if 'USB' in port.description or 'Arduino' in port.description]
+        return [f'    {port.device}' for port in ports if 'USB' in port.description or 'Arduino' in port.description]
     
     def send_request(request):
         try:

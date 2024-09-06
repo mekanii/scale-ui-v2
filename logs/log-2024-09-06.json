@@ -1,0 +1,12 @@
+[
+    {
+        "date": "2024-09-06",
+        "time": "09:41:06",
+        "part": "K1AL-N801",
+        "std": 218,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 161,
+        "status": "NG"
+    }
+]
