@@ -355,6 +355,10 @@ class PartsFrame(ttk.Frame):
     def open_dialog(self, part=None):
         dialog = tk.Toplevel(self, width=400)
 
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.attributes("-topmost", True)
+
         ttk.Label(dialog, text="Part Name").pack(padx=20, pady=(10, 0), side=TOP, fill=X, anchor=W)
         part_name_entry = ttk.Entry(dialog)
         part_name_entry.pack(padx=20, pady=10, side=TOP, fill=X, anchor=W)
@@ -421,6 +425,10 @@ class PartsFrame(ttk.Frame):
     def delete_dialog(self, part_id):
         dialog = tk.Toplevel(self)
         dialog.title("Confirm Delete")
+
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.attributes("-topmost", True)
 
         ttk.Label(
             dialog, 

@@ -326,6 +326,10 @@ class CalibrationFrame(ttk.Frame):
     def open_dialog(self, part=None):
         dialog = tk.Toplevel(self, width=400)
 
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.attributes("-topmost", True)
+
         numeric_vcmd = (self.register(self.validate_numeric_input), '%P')
 
         ttk.Label(dialog, text="Known Weight").pack(padx=20, pady=(10, 0), side=TOP, fill=X, anchor=W)
@@ -342,15 +346,22 @@ class CalibrationFrame(ttk.Frame):
             padding=(10, 0)
         ).pack(side=RIGHT, fill=Y)
 
+        action_frame = ttk.Frame(dialog)
+        action_frame.pack(padx=20, pady=10, side=BOTTOM, fill=tk.X)
+        action_frame.grid_columnconfigure(0, weight=1)
+        action_frame.grid_columnconfigure(1, weight=1)
+
         ttk.Button(
-            dialog,
+            action_frame,
             text="SUBMIT",
+            bootstyle=SUCCESS,
             command=lambda: self.handle_submit(self.known_weight_entry.get(), dialog)
         ).pack(padx=10, pady=10, side=LEFT, fill=tk.X)
 
         ttk.Button(
-            dialog,
+            action_frame,
             text="CANCEL",
+            bootstyle=SECONDARY,
             command=lambda: dialog.destroy()
         ).pack(padx=10, pady=10, side=RIGHT, fill=tk.X)
 

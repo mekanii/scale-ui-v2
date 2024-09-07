@@ -208,5 +208,165 @@
         "hysteresis": 2,
         "measured": 156,
         "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "18:28:11",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 158,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "18:30:43",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 158,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:11:51",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 156,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:14:27",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 159,
+        "status": "NG"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:14:43",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 157,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:15:58",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 156,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:18:33",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 157,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:20:46",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 157,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:21:25",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 157,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:23:28",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 157,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:24:15",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 157,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:25:21",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 157,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:33:58",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 156,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:54:16",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 157,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "19:59:33",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 157,
+        "status": "OK"
+    },
+    {
+        "date": "2024-09-06",
+        "time": "20:01:58",
+        "part": "vivo",
+        "std": 157,
+        "unit": "gr",
+        "hysteresis": 2,
+        "measured": 157,
+        "status": "OK"
     }
 ]

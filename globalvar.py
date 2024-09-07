@@ -88,20 +88,62 @@ class GlobalConfig:
             printer_name = conn.getDefault()
             print_job_id = conn.printFile(printer_name, file_path, "Print Job", {})
 
+            job_attributes = conn.getJobAttributes(print_job_id)
+            job_state = job_attributes['job-state']
+            GlobalConfig.log_data(part, qty, print_job_id, job_state)
+
             while True:
                 job_attributes = conn.getJobAttributes(print_job_id)
                 job_state = job_attributes['job-state']
-
                 # Check if the job is completed or canceled
                 if job_state in [cups.IPP_JOB_COMPLETED, cups.IPP_JOB_CANCELED, cups.IPP_JOB_ABORTED]:
-                    GlobalConfig.log_data(part, qty, print_job_id, job_state)
+                    # print(job_state)
+                    GlobalConfig.update_job_state(print_job_id, job_state)
                     break
+                elif job_state in [cups.IPP_JOB_PROCESSING, cups.IPP_JOB_HELD, cups.IPP_JOB_PENDING, cups.IPP_JOB_STOPPED]:
+                    # print(job_state)
+                    GlobalConfig.update_job_state(print_job_id, job_state)
 
                 # Wait for a short period before checking again
                 time.sleep(1)
         except Exception as e:
             print(f"An error occurred during printing: {e}")
         
+        return True
+    
+    def reprint_job(job_id):
+        try:
+            # Connect to the CUPS server
+            conn = cups.Connection()
+
+            # Get the job attributes
+            job_attributes = conn.getJobAttributes(job_id)
+            if not job_attributes:
+                print(f"Job ID {job_id} not found.")
+                return False
+
+            conn.restartJob(job_id)
+            job_attributes = conn.getJobAttributes(job_id)
+            job_state = job_attributes['job-state']
+            GlobalConfig.update_job_state(job_id, job_state)
+            
+            while True:
+                job_attributes = conn.getJobAttributes(job_id)
+                job_state = job_attributes['job-state']
+                # Check if the job is completed or canceled
+                if job_state in [cups.IPP_JOB_COMPLETED, cups.IPP_JOB_CANCELED, cups.IPP_JOB_ABORTED]:
+                    # print(job_state)
+                    GlobalConfig.update_job_state(job_id, job_state)
+                    break
+                elif job_state in [cups.IPP_JOB_PROCESSING, cups.IPP_JOB_HELD, cups.IPP_JOB_PENDING, cups.IPP_JOB_STOPPED]:
+                    # print(job_state)
+                    GlobalConfig.update_job_state(job_id, job_state)
+
+                # Wait for a short period before checking again
+                time.sleep(1)
+        except Exception as e:
+            print(f"An error occurred during reprinting: {e}")
+            
         return True
 
     def log_data(part, qty, job_id, job_state):
@@ -143,3 +185,36 @@ class GlobalConfig:
             log_file.seek(0)
             # Write the updated data back to the file
             json.dump(data, log_file, indent=4)
+
+    def update_job_state(job_id, new_job_state):
+        # Get the current date in the format yyyy-mm-dd
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        log_filename = f"logs/print-job-{current_date}.json"
+
+        # Check if the log file exists
+        if not os.path.isfile(log_filename):
+            print(f"Log file {log_filename} does not exist.")
+            return False
+
+        # Read the log file
+        with open(log_filename, 'r') as log_file:
+            data = json.load(log_file)
+
+        # Find the entry with the specified job_id and update its job_state
+        job_found = False
+        for entry in data:
+            if entry['jobid'] == job_id:
+                entry['state'] = new_job_state
+                job_found = True
+                break
+
+        if not job_found:
+            print(f"Job ID {job_id} not found in log file.")
+            return False
+
+        # Write the updated data back to the log file
+        with open(log_filename, 'w') as log_file:
+            json.dump(data, log_file, indent=4)
+
+        # print(f"Job ID {job_id} updated to state {new_job_state}.")
+        return True

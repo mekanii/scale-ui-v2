@@ -11,6 +11,9 @@ import ast
 import os
 from datetime import datetime
 import pygame
+import threading
+import queue
+import cups
 from globalvar import GlobalConfig
 
 class ScaleFrame(ttk.Frame):
@@ -35,6 +38,8 @@ class ScaleFrame(ttk.Frame):
 
         self.flag_tare = tk.BooleanVar(value=False)
         self.flag_pause = tk.BooleanVar(value=False)
+
+        self.count_try = tk.IntVar(value=0)
 
         self.popups = {
             "com": None,
@@ -407,7 +412,11 @@ class ScaleFrame(ttk.Frame):
                                 qty_packed = self.sum_qty_by_part(part['name'])
                                 count_ok_session = (count_ok - qty_packed) % self.count_ok_setpoint.get()
                                 if count_ok_session == 0:
-                                    GlobalConfig.print_label(part, self.count_ok_setpoint.get())
+                                    result_queue = queue.Queue()
+                                    self.count_try.set(0)
+                                    threading.Thread(target=self.run_print_label, args=(part, self.count_ok_setpoint.get(), result_queue)).start()
+                                    self.after(100, self.check_print_label_result, result_queue)
+                                    # GlobalConfig.print_label(part, self.count_ok_setpoint.get())
                             else:
                                 count_ok_session = count_ok
                             
@@ -542,7 +551,13 @@ class ScaleFrame(ttk.Frame):
         pygame.mixer.music.play()
 
     def open_dialog(self):
-        dialog = tk.Toplevel(self, width=400)
+        dialog = tk.Toplevel(self)
+        dialog.title("Set Point")
+        dialog.geometry("400x200")
+
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.attributes("-topmost", True)
 
         self.flag_pause.set(True)
 
@@ -595,4 +610,90 @@ class ScaleFrame(ttk.Frame):
         self.flag_pause.set(False)
         dialog.destroy()
 
-    
+    def run_print_label(self, part, count_ok_setpoint, result_queue):
+        # Call the print_label function and put the result in the queue
+        result = GlobalConfig.print_label(part, count_ok_setpoint)
+        result_queue.put(result)
+
+    def check_print_label_result(self, result_queue):
+        if self.flag_pause.get() == False:
+            dialog_width = 400
+            dialog_height = 200
+
+            self.dialog = tk.Toplevel(self, width=dialog_width, height=dialog_height)
+
+            parent_x = self.winfo_rootx()
+            parent_y = self.winfo_rooty()
+            parent_width = self.winfo_width()
+            parent_height = self.winfo_height()
+
+            center_x = parent_x + (parent_width // 2) - (dialog_width // 2)
+            center_y = parent_y + (parent_height // 2) - (dialog_height // 2)
+
+            self.dialog.geometry(f"{dialog_width}x{dialog_height}+{center_x}+{center_y}")
+
+            self.dialog.transient(self)
+            self.dialog.grab_set()
+            self.dialog.attributes("-topmost", True)
+            self.dialog.overrideredirect(True)
+
+            self.flag_pause.set(True)
+
+            # Add a label and a progress bar (spinner) to the dialog
+            ttk.Label(
+                self.dialog, 
+                text="Printing, please wait...", 
+                font=('Segoe UI', 20)
+            ).pack(padx=30, pady=20)
+            progress = ttk.Progressbar(self.dialog, mode='indeterminate')
+            progress.pack(fill=X, padx=30, pady=20)
+            progress.start()
+
+            # action_frame = ttk.Frame(self.dialog)
+            # action_frame.pack(padx=20, pady=10, side=BOTTOM, fill=tk.X)
+            # action_frame.grid_columnconfigure(0, weight=1)
+            # action_frame.grid_columnconfigure(1, weight=1)
+
+            self.cancel_button = ttk.Button(
+                self.dialog,
+                text="CANCEL",
+                bootstyle=DANGER,
+                command=lambda: self.cancel_last_print_job(self.dialog)
+            )
+
+        try:
+            # Try to get the result from the queue
+            result = result_queue.get_nowait()
+            if result == True:
+                self.dialog.destroy()
+                self.flag_pause.set(False)
+        except queue.Empty:
+            # If the queue is empty, check again after a short delay
+            current_try = self.count_try.get()
+            self.count_try.set(current_try + 1)
+            if self.count_try.get() == 200:
+                self.cancel_button.pack(fill=X, side=BOTTOM, padx=30, pady=20)
+            self.after(100, self.check_print_label_result, result_queue)
+
+    def cancel_last_print_job(self, dialog):
+        # Connect to the CUPS server
+        conn = cups.Connection()
+
+        printer_name = conn.getDefault()
+
+        # Get the list of jobs for the specified printer
+        jobs = conn.getJobs(which_jobs='all', my_jobs=True)
+
+        if not jobs:
+            print("No print jobs found.")
+            return False
+
+        # Find the last job (most recent job)
+        last_job_id = max(jobs.keys())
+        # last_job = jobs[last_job_id]
+
+        # Cancel the last job
+        conn.cancelJob(last_job_id)
+        print(f"Canceled job ID {last_job_id} for printer {printer_name}.")
+        
+        dialog.destroy()
