@@ -24,7 +24,7 @@ class GlobalConfig:
     def get_available_com_ports():
         ports = serial.tools.list_ports.comports()
         return [f'    {port.device}' for port in ports if 'USB' in port.description or 'Arduino' in port.description]
-    
+
     def send_request(request):
         try:
             str_request = json.dumps(request) + '\n'
@@ -60,9 +60,9 @@ class GlobalConfig:
         try:
             d = datetime.now().strftime('%Y%m%d')
             t = datetime.now().strftime('%H%M%S')
-            filename = f'{part['name']}-{d}-{t}.pdf'
+            filename = f"{part['name']}-{d}-{t}.pdf"
             file_path = os.path.join('label', filename)
-            
+
             # font_name = "custom_font"
             # font_path = "fonts/THSarabunNew.ttf"
 
@@ -108,9 +108,9 @@ class GlobalConfig:
                 time.sleep(1)
         except Exception as e:
             print(f"An error occurred during printing: {e}")
-        
+
         return True
-    
+
     def reprint_job(job_id):
         try:
             # Connect to the CUPS server
@@ -126,7 +126,7 @@ class GlobalConfig:
             job_attributes = conn.getJobAttributes(job_id)
             job_state = job_attributes['job-state']
             GlobalConfig.update_job_state(job_id, job_state)
-            
+
             while True:
                 job_attributes = conn.getJobAttributes(job_id)
                 job_state = job_attributes['job-state']
@@ -143,7 +143,7 @@ class GlobalConfig:
                 time.sleep(1)
         except Exception as e:
             print(f"An error occurred during reprinting: {e}")
-            
+
         return True
 
     def log_data(part, qty, job_id, job_state):
