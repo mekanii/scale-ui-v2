@@ -433,7 +433,7 @@ class PrinterFrame(ttk.Frame):
             {'text': 'Time', 'width': 150},
             {'text': 'Part', 'stretch': True},
             {'text': 'Qty', 'width': 100},
-            {'text': 'State', 'width': 150},
+            {'text': 'State', 'width': 175},
         ]
         table = Tableview(
             self.table_frame,
