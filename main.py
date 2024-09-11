@@ -734,6 +734,6 @@ class Main(ttk.Frame):
 
 if __name__ == "__main__":
     app = ttk.Window("Scale UI", "darkly")
-    app.geometry("1366x768") 
+    app.geometry("1280x720") 
     Main(app)
     app.mainloop()
