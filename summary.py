@@ -240,8 +240,8 @@ class SummaryFrame(ttk.Frame):
             {'text': 'Standard', 'width': 150},
             {'text': 'Unit', 'width': 100},
             {'text': 'Tolerance', 'width': 150},
-            {'text': 'OK', 'width': 150},
-            {'text': 'NG', 'width': 150}
+            {'text': 'OK', 'width': 125},
+            {'text': 'NG', 'width': 125}
         ]
         table = Tableview(self.log_frame, coldata=coldata, rowdata=rowdata)
         table.grid(row=0, column=0, sticky=NSEW, padx=(20, 0), pady=(5, 0))
