@@ -254,7 +254,7 @@ class ScaleFrame(ttk.Frame):
             widget.config(text=option)
         popup.destroy()
 
-        self.open_dialog()
+        # self.open_dialog()
 
     def get_parts(self):
         if GlobalConfig.serial_connection and GlobalConfig.serial_connection.is_open:
@@ -375,15 +375,15 @@ class ScaleFrame(ttk.Frame):
                         self.last_part.set(self.part.get())
                         count, count_ok, count_ng = self.count_log_data(part['name'])
 
-                        if (self.count_ok_setpoint.get() > 0):
+                        if (part['pack'] > 0):
                             qty_packed = self.sum_qty_by_part(part['name'])
-                            count_ok_session = (count_ok - qty_packed) % self.count_ok_setpoint.get()
+                            count_ok_session = (count_ok - qty_packed) % part['pack']
                             
                         else:
                             count_ok_session = count_ok
                         
                         self.count_pack.set(f"{count}")
-                        self.count_ok.set(f"[ {count_ok_session} / {self.count_ok_setpoint.get()} ] {count_ok} OK")
+                        self.count_ok.set(f"[ {count_ok_session} / {part['pack']} ] {count_ok} OK")
                         self.count_ng.set(f"{count_ng} NG")
                         # self.std.set(f"Standard Weight: {part['std']} {part['unit']}, Tolerance: {part['hysteresis']:.2f}")
                         self.part_std.set(f"Standard Weight: {part['std']} {part['unit']}")
@@ -408,20 +408,20 @@ class ScaleFrame(ttk.Frame):
                             self.log_data(part, float(format(weight, '.2f')) if part['unit'] == 'kg' else int(weight), "OK")
                             count, count_ok, count_ng = self.count_log_data(part['name'])
                             
-                            if (self.count_ok_setpoint.get() > 0):
+                            if (part['pack'] > 0):
                                 qty_packed = self.sum_qty_by_part(part['name'])
-                                count_ok_session = (count_ok - qty_packed) % self.count_ok_setpoint.get()
+                                count_ok_session = (count_ok - qty_packed) % part['pack']
                                 if count_ok_session == 0:
                                     result_queue = queue.Queue()
                                     self.count_try.set(0)
-                                    threading.Thread(target=self.run_print_label, args=(part, self.count_ok_setpoint.get(), result_queue)).start()
+                                    threading.Thread(target=self.run_print_label, args=(part, part['pack'], result_queue)).start()
                                     self.after(100, self.check_print_label_result, result_queue)
                                     # GlobalConfig.print_label(part, self.count_ok_setpoint.get())
                             else:
                                 count_ok_session = count_ok
                             
                             self.count_pack.set(f"{count}")
-                            self.count_ok.set(f"[ {count_ok_session} / {self.count_ok_setpoint.get()} ] {count_ok} OK")
+                            self.count_ok.set(f"[ {count_ok_session} / {part['pack']} ] {count_ok} OK")
                             # self.count_ng.set(f"{count_ng} NG")
 
                         elif check == 2 and check != self.last_check.get():
