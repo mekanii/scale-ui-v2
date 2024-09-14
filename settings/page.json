@@ -1,0 +1,12 @@
+{
+    "size": {
+        "width": 100,
+        "length": 150
+    },
+    "margin": {
+        "left": 5,
+        "top": 5,
+        "right": 5,
+        "bottom": 5
+    }
+}
