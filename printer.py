@@ -51,6 +51,23 @@ class PrinterFrame(ttk.Frame):
         ).pack(side=TOP, anchor=W, fill=X, padx=5, pady=(10, 20))
         # .grid(row=0, column=0, columnspan=2, sticky=NSEW, padx=5, pady=(10, 20))
         
+        pg_frame = ttk.Frame(self.scrolled_frame)
+        pg_frame.pack(side=TOP, fill=X)
+        pg_frame.grid_rowconfigure(0, weight=0)
+        pg_frame.grid_columnconfigure(0, minsize=100, weight=1)
+        pg_frame.grid_columnconfigure(1, minsize=100, weight=1)
+        pg_frame.grid_columnconfigure(2, minsize=100, weight=1)
+
+        self.page_button = ttk.Button(
+            master=pg_frame,
+            image='arrow-circle-down-36',
+            text='Page Settings',
+            bootstyle=INFO,
+            state=NORMAL,
+            command=lambda: self.page_settings_dialog()
+        )
+        self.page_button.grid(row=0, column=0, sticky=NSEW, ipady=10, padx=20, pady=(5, 20))
+
         self.status_count_label = ttk.Label(self.scrolled_frame, text="Found 0 printers", font=('Segoe UI', 24))
         self.status_count_label.pack(side=TOP, anchor=W, fill=X, padx=20, pady=(0, 5))
         # self.status_count_label.grid(row=3, column=0, columnspan=2, sticky=NSEW, padx=20, pady=(0, 5))
@@ -549,4 +566,242 @@ class PrinterFrame(ttk.Frame):
         conn.cancelJob(job_id)
         print(f"Canceled job ID {job_id} for printer {printer_name}.")
         
+        dialog.destroy()
+
+    def page_settings_dialog(self):
+        dialog = tk.Toplevel(self)
+        dialog.title("Page Settings")
+        dialog.geometry("400x660")
+
+        dialog.transient(self)
+        dialog.grab_set()
+        dialog.attributes("-topmost", True)
+
+        self.flag_pause.set(True)
+
+        numeric_vcmd = (self.register(self.validate_numeric_input), '%P')
+
+        label_labelframe = ttk.LabelFrame(dialog, text="Label Size")
+        label_labelframe.pack(side=TOP, fill=X, padx=10, pady=10)
+        label_labelframe.grid_rowconfigure(0, weight=0)
+        label_labelframe.grid_rowconfigure(1, weight=0)
+        label_labelframe.grid_columnconfigure(0, weight=1, minsize=100)
+        label_labelframe.grid_columnconfigure(1, weight=1, minsize=100)
+
+        ttk.Label(label_labelframe, text="Width").grid(row=0, column=0, padx=20, pady=(10, 0), sticky=NSEW)
+        self.label_w = ttk.Entry(
+            label_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.label_w.grid(row=1, column=0, padx=20, pady=(10, 20), sticky=NSEW)
+
+        ttk.Label(label_labelframe, text="Height").grid(row=0, column=1, padx=20, pady=(10, 0), sticky=NSEW)
+        self.label_h = ttk.Entry(
+            label_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.label_h.grid(row=1, column=1, padx=20, pady=(10, 20), sticky=NSEW)
+
+        label_padding_labelframe = ttk.LabelFrame(dialog, text="Label Padding")
+        label_padding_labelframe.pack(side=TOP, fill=X, padx=10, pady=10)
+        label_padding_labelframe.grid_rowconfigure(0, weight=0)
+        label_padding_labelframe.grid_rowconfigure(1, weight=0)
+        label_padding_labelframe.grid_rowconfigure(2, weight=0)
+        label_padding_labelframe.grid_rowconfigure(3, weight=0)
+        label_padding_labelframe.grid_columnconfigure(0, weight=1, minsize=100)
+        label_padding_labelframe.grid_columnconfigure(1, weight=1, minsize=100)
+
+        ttk.Label(label_padding_labelframe, text="Top").grid(row=0, column=0, padx=20, pady=(10, 0), sticky=NSEW)
+        self.label_padding_t = ttk.Entry(
+            label_padding_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.label_padding_t.grid(row=1, column=0, padx=20, pady=(10, 0), sticky=NSEW)
+
+        ttk.Label(label_padding_labelframe, text="Bottom").grid(row=2, column=0, padx=20, pady=(10, 0), sticky=NSEW)
+        self.label_padding_b = ttk.Entry(
+            label_padding_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.label_padding_b.grid(row=3, column=0, padx=20, pady=(10, 20), sticky=NSEW)
+
+        ttk.Label(label_padding_labelframe, text="Left").grid(row=0, column=1, padx=20, pady=(10, 0), sticky=NSEW)
+        self.label_padding_l = ttk.Entry(
+            label_padding_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.label_padding_l.grid(row=1, column=1, padx=20, pady=(10, 0), sticky=NSEW)
+
+        ttk.Label(label_padding_labelframe, text="Right").grid(row=2, column=1, padx=20, pady=(10, 0), sticky=NSEW)
+        self.label_padding_r = ttk.Entry(
+            label_padding_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.label_padding_r.grid(row=3, column=1, padx=20, pady=(10, 20), sticky=NSEW)
+
+        text_position_labelframe = ttk.LabelFrame(dialog, text="Text Position")
+        text_position_labelframe.pack(side=TOP, fill=X, padx=10, pady=10)
+        text_position_labelframe.grid_rowconfigure(0, weight=0)
+        text_position_labelframe.grid_rowconfigure(1, weight=0)
+        text_position_labelframe.grid_rowconfigure(2, weight=0)
+        text_position_labelframe.grid_rowconfigure(3, weight=0)
+        text_position_labelframe.grid_rowconfigure(4, weight=0)
+        text_position_labelframe.grid_rowconfigure(5, weight=0)
+        text_position_labelframe.grid_columnconfigure(0, weight=1, minsize=100)
+        text_position_labelframe.grid_columnconfigure(1, weight=1, minsize=100)
+        text_position_labelframe.grid_columnconfigure(2, weight=1, minsize=100)
+
+        ttk.Label(text_position_labelframe, text="x").grid(row=0, column=1, padx=20, pady=(10, 0), sticky=NSEW)
+        ttk.Label(text_position_labelframe, text="y").grid(row=0, column=2, padx=20, pady=(10, 0), sticky=NSEW)
+        ttk.Label(text_position_labelframe, text="Part").grid(row=1, column=0, padx=20, pady=(10, 0), sticky=NSEW)
+
+        self.part_pos_x = ttk.Entry(
+            text_position_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.part_pos_x.grid(row=1, column=1, padx=20, pady=(10, 0), sticky=NSEW)
+
+        self.part_pos_y = ttk.Entry(
+            text_position_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.part_pos_y.grid(row=1, column=2, padx=20, pady=(10, 0), sticky=NSEW)
+
+        ttk.Label(text_position_labelframe, text="x").grid(row=2, column=1, padx=20, pady=(10, 0), sticky=NSEW)
+        ttk.Label(text_position_labelframe, text="y").grid(row=2, column=2, padx=20, pady=(10, 0), sticky=NSEW)
+        ttk.Label(text_position_labelframe, text="Date").grid(row=3, column=0, padx=20, pady=(10, 0), sticky=NSEW)
+
+        self.date_pos_x = ttk.Entry(
+            text_position_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.date_pos_x.grid(row=3, column=1, padx=20, pady=(10, 0), sticky=NSEW)
+
+        self.date_pos_y = ttk.Entry(
+            text_position_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.date_pos_y.grid(row=3, column=2, padx=20, pady=(10, 0), sticky=NSEW)
+
+        ttk.Label(text_position_labelframe, text="x").grid(row=4, column=1, padx=20, pady=(10, 0), sticky=NSEW)
+        ttk.Label(text_position_labelframe, text="y").grid(row=4, column=2, padx=20, pady=(10, 0), sticky=NSEW)
+        ttk.Label(text_position_labelframe, text="Qty").grid(row=5, column=0, padx=20, pady=(10, 20), sticky=NSEW)
+
+        self.qty_pos_x = ttk.Entry(
+            text_position_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.qty_pos_x.grid(row=5, column=1, padx=20, pady=(10, 20), sticky=NSEW)
+
+        self.qty_pos_y = ttk.Entry(
+            text_position_labelframe,
+            validate='key',
+            validatecommand=numeric_vcmd,
+            justify=RIGHT
+        )
+        self.qty_pos_y.grid(row=5, column=2, padx=20, pady=(10, 20), sticky=NSEW)
+
+        try:
+            with open('settings/page.json', 'r') as file:
+                json_data = json.load(file)
+                self.label_w.insert(0, json_data["size"]["width"])
+                self.label_h.insert(0, json_data["size"]["height"])
+                self.label_padding_t.insert(0, json_data["padding"]["t"])
+                self.label_padding_b.insert(0, json_data["padding"]["b"])
+                self.label_padding_l.insert(0, json_data["padding"]["l"])
+                self.label_padding_r.insert(0, json_data["padding"]["r"])
+                self.part_pos_x.insert(0, json_data["position"]["part"]["x"])
+                self.part_pos_y.insert(0, json_data["position"]["part"]["y"])
+                self.date_pos_x.insert(0, json_data["position"]["date"]["x"])
+                self.date_pos_y.insert(0, json_data["position"]["date"]["y"])
+                self.qty_pos_x.insert(0, json_data["position"]["qty"]["x"])
+                self.qty_pos_y.insert(0, json_data["position"]["qty"]["y"])
+
+        except Exception as e:
+            self.notificatiion("Error", f"Failed to load data: {e}", False)
+            
+        action_frame = ttk.Frame(dialog)
+        action_frame.pack(padx=20, pady=10, side=BOTTOM, fill=tk.X)
+        action_frame.grid_columnconfigure(0, weight=1)
+        action_frame.grid_columnconfigure(1, weight=1)
+
+        ttk.Button(
+            action_frame,
+            text="SUBMIT",
+            bootstyle=SUCCESS,
+            command=lambda: self.handle_page_settings_submit(
+                dialog,
+                self.label_w.get(),
+                self.label_h.get(),
+                self.label_padding_t.get(),
+                self.label_padding_b.get(),
+                self.label_padding_l.get(),
+                self.label_padding_r.get(),
+                self.part_pos_x.get(),
+                self.part_pos_y.get(),
+                self.date_pos_x.get(),
+                self.date_pos_y.get(),
+                self.qty_pos_x.get(),
+                self.qty_pos_y.get()
+            )
+        ).grid(row=0, column=0, sticky=NSEW, padx=(0, 5))
+
+        ttk.Button(
+            action_frame,
+            text="CANCEL",
+            bootstyle=SECONDARY,
+            command=lambda: self.handle_page_settings_cancel(dialog)
+        ).grid(row=0, column=1, sticky=NSEW, padx=(5, 0))
+
+    def handle_page_settings_submit(self, dialog, size_w, size_h, padding_t, padding_b, padding_l, padding_r, part_x, part_y, date_x, date_y, qty_x, qty_y):
+        try:
+            with open('settings/page.json', 'r+') as file:
+                json_data = json.load(file)
+                json_data["size"]["width"] = size_w
+                json_data["size"]["height"] = size_h
+                json_data["padding"]["t"] = padding_t
+                json_data["padding"]["b"] = padding_b
+                json_data["padding"]["l"] = padding_l
+                json_data["padding"]["r"] = padding_r
+                json_data["position"]["part"]["x"] = part_x
+                json_data["position"]["part"]["y"] = part_y
+                json_data["position"]["date"]["x"] = date_x
+                json_data["position"]["date"]["y"] = date_y
+                json_data["position"]["qty"]["x"] = qty_x
+                json_data["position"]["qty"]["y"] = qty_y
+                file.seek(0)
+                json.dump(json_data, file, indent=4)
+                file.truncate()
+
+                self.notificatiion("Label Settings", "Data saved successfully", True)
+        except Exception as e:
+            self.notificatiion("Label Settings", f"Failed to save data: {e}", False)
+
+        self.flag_pause.set(False)
+        dialog.destroy()
+
+    def handle_page_settings_cancel(self, dialog):
+        self.flag_pause.set(False)
         dialog.destroy()

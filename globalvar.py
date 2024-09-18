@@ -58,54 +58,69 @@ class GlobalConfig:
 
     def print_label(part, qty):
         try:
-            d = datetime.now().strftime('%Y%m%d')
-            t = datetime.now().strftime('%H%M%S')
-            filename = f"{part['name']}-{d}-{t}.pdf"
-            file_path = os.path.join('label', filename)
+            with open('settings/page.json', 'r') as file:
+                json_data = json.load(file)
+                size_w = json_data["size"]["width"]
+                size_h = json_data["size"]["height"]
+                padding_t = json_data["padding"]["t"]
+                padding_b = json_data["padding"]["b"]
+                padding_l = json_data["padding"]["l"]
+                padding_r = json_data["padding"]["r"]
+                position_part_x = json_data["position"]["part"]["x"]
+                position_part_y = json_data["position"]["part"]["y"]
+                position_date_x = json_data["position"]["date"]["x"]
+                position_date_y = json_data["position"]["date"]["y"]
+                position_qty_x = json_data["position"]["qty"]["x"]
+                position_qty_y = json_data["position"]["qty"]["y"]
 
-            # font_name = "custom_font"
-            # font_path = "fonts/THSarabunNew.ttf"
+                dt = datetime.now()
+                filename = f"{part['name']}-{dt.strftime('%Y%m%d')}-{dt.strftime('%H%M%S')}.pdf"
+                file_path = os.path.join('label', filename)
 
-            # Register the custom font
-            # pdfmetrics.registerFont(TTFont(font_name, font_path))
+                # font_name = "custom_font"
+                # font_path = "fonts/THSarabunNew.ttf"
 
-            # Create a canvas object with the specified paper size
-            c = canvas.Canvas(file_path, pagesize=GlobalConfig.paper_size)
+                # Register the custom font
+                # pdfmetrics.registerFont(TTFont(font_name, font_path))
 
-            # Set the font and size
-            c.setFontSize(14)
+                # Create a canvas object with the specified paper size
+                paper_size = (size_w * mm, size_h * mm)
+                c = canvas.Canvas(file_path, pagesize=paper_size)
 
-            # Draw the text on the canvas
-            width, height = GlobalConfig.paper_size
-            c.drawString(5 * mm, height - (6 * mm), f'{d} {t}')
-            c.drawString(5 * mm, height - (12 * mm), part['name'])
-            c.drawString(5 * mm, height - (18 * mm), f'{qty} pack')
+                # Set the font and size
+                c.setFontSize(14)
 
-            # Save the PDF file
-            c.save()
+                # Draw the text on the canvas
+                # width, height = GlobalConfig.paper_size
+                c.drawString((padding_l + position_part_x) * mm, size_h - ((padding_t + position_part_y) * mm), part['name'])
+                c.drawString((padding_l + position_date_x) * mm, size_h - ((padding_t + position_date_y) * mm), f"{dt.strftime('%Y-%m-%d')}")
+                c.drawString((padding_l + position_qty_x) * mm, size_h - ((padding_t + position_qty_y) * mm), f"{qty}")
 
-            conn = cups.Connection()
-            printer_name = conn.getDefault()
-            print_job_id = conn.printFile(printer_name, file_path, "Print Job", {})
+                # Save the PDF file
+                c.save()
 
-            job_attributes = conn.getJobAttributes(print_job_id)
-            job_state = job_attributes['job-state']
-            GlobalConfig.log_data(part, qty, print_job_id, job_state)
+                conn = cups.Connection()
+                printer_name = conn.getDefault()
+                print_job_id = conn.printFile(printer_name, file_path, "Print Job", {})
 
-            while True:
                 job_attributes = conn.getJobAttributes(print_job_id)
                 job_state = job_attributes['job-state']
-                # Check if the job is completed or canceled
-                if job_state in [cups.IPP_JOB_COMPLETED, cups.IPP_JOB_CANCELED, cups.IPP_JOB_ABORTED]:
-                    # print(job_state)
-                    GlobalConfig.update_job_state(print_job_id, job_state)
-                    break
-                elif job_state in [cups.IPP_JOB_PROCESSING, cups.IPP_JOB_HELD, cups.IPP_JOB_PENDING, cups.IPP_JOB_STOPPED]:
-                    # print(job_state)
-                    GlobalConfig.update_job_state(print_job_id, job_state)
+                GlobalConfig.log_data(part, qty, print_job_id, job_state)
 
-                # Wait for a short period before checking again
-                time.sleep(1)
+                while True:
+                    job_attributes = conn.getJobAttributes(print_job_id)
+                    job_state = job_attributes['job-state']
+                    # Check if the job is completed or canceled
+                    if job_state in [cups.IPP_JOB_COMPLETED, cups.IPP_JOB_CANCELED, cups.IPP_JOB_ABORTED]:
+                        # print(job_state)
+                        GlobalConfig.update_job_state(print_job_id, job_state)
+                        break
+                    elif job_state in [cups.IPP_JOB_PROCESSING, cups.IPP_JOB_HELD, cups.IPP_JOB_PENDING, cups.IPP_JOB_STOPPED]:
+                        # print(job_state)
+                        GlobalConfig.update_job_state(print_job_id, job_state)
+
+                    # Wait for a short period before checking again
+                    time.sleep(1)
         except Exception as e:
             print(f"An error occurred during printing: {e}")
 
